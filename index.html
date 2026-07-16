@@ -13,43 +13,43 @@
 <style>
 
 *{
-box-sizing:border-box;
+    box-sizing:border-box;
 }
 
 
 body{
 
-margin:0;
-overflow:hidden;
-background:#202124;
+    margin:0;
+    overflow:hidden;
+    background:#202124;
 
 }
-
 
 
 #toolbar{
 
-height:80px;
+    height:80px;
 
-display:flex;
+    display:flex;
 
-align-items:center;
+    align-items:center;
 
-justify-content:center;
+    justify-content:center;
 
-gap:8px;
+    gap:8px;
 
-background:#292929;
+    background:#292929;
 
 }
 
 
 
-button,input{
+button,
+input{
 
-border:0;
+    border:0;
 
-border-radius:12px;
+    border-radius:12px;
 
 }
 
@@ -57,13 +57,21 @@ border-radius:12px;
 
 button{
 
-padding:10px 15px;
+    padding:10px 15px;
 
-background:#444;
+    background:#444;
 
-color:white;
+    color:white;
 
-font-size:15px;
+    font-size:15px;
+
+}
+
+
+
+button:hover{
+
+    background:#666;
 
 }
 
@@ -71,11 +79,11 @@ font-size:15px;
 
 canvas{
 
-display:block;
+    display:block;
 
-background:white;
+    background:white;
 
-touch-action:none;
+    touch-action:none;
 
 }
 
@@ -83,9 +91,7 @@ touch-action:none;
 
 </style>
 
-
 </head>
-
 
 
 <body>
@@ -95,24 +101,26 @@ touch-action:none;
 
 
 <input
-type="color"
 id="color"
+type="color"
 value="#000000"
 >
 
 
 <input
-type="range"
 id="size"
+type="range"
 min="1"
 max="40"
 value="5"
 >
 
 
+
 <button id="eraser">
 지우개
 </button>
+
 
 
 <button id="undo">
@@ -121,8 +129,9 @@ value="5"
 
 
 <button id="redo">
-↷ 이후
+↷ 다음
 </button>
+
 
 
 <button id="clear">
@@ -143,31 +152,32 @@ value="5"
 <script>
 
 
-// =====================
+// ======================
 // WebSocket
-// =====================
+// ======================
 
 
 const socket =
 new WebSocket(
-"wss://tettris-rkjv.onrender.com"
+"wss://YOUR_SERVER_ADDRESS"
 );
 
 
 
 
 
-// =====================
+// ======================
 // Canvas
-// =====================
+// ======================
 
 
-const canvas=
+const canvas =
 document.getElementById("canvas");
 
 
-const ctx=
+const ctx =
 canvas.getContext("2d");
+
 
 
 
@@ -175,74 +185,85 @@ canvas.getContext("2d");
 function resize(){
 
 
-let old =
-canvas.toDataURL();
+    let old =
+    canvas.toDataURL();
 
 
 
-canvas.width =
-window.innerWidth;
-
-
-canvas.height =
-window.innerHeight-80;
+    canvas.width =
+    window.innerWidth;
 
 
 
-if(old !== "data:,"){
+    canvas.height =
+    window.innerHeight-80;
 
 
-let img=new Image();
 
 
-img.onload=()=>{
+    if(old !== "data:,"){
 
 
-ctx.drawImage(
-img,
-0,
-0,
-canvas.width,
-canvas.height
-);
+        let img =
+        new Image();
 
 
-};
+        img.onload=()=>{
 
 
-img.src=old;
+            ctx.drawImage(
+                img,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+
+        };
+
+
+        img.src=old;
+
+
+    }
+
 
 
 }
 
-
-}
 
 
 resize();
 
 
-window.onresize=resize;
+window.addEventListener(
+"resize",
+resize
+);
 
 
 
 
 
 
-// =====================
+// ======================
 // 상태
-// =====================
+// ======================
 
 
+let brushColor="#000000";
 
-let color="#000000";
 
 let brushSize=5;
 
-let eraser=false;
+
+let isEraser=false;
+
 
 
 let drawing=false;
+
 
 
 let lastX=0;
@@ -251,165 +272,201 @@ let lastY=0;
 
 
 
-// 내 기록
+// Stroke 단위 저장
 
 let myHistory=[];
 
+
 let myRedo=[];
 
-
-// 상대 기록
 
 let remoteHistory=[];
 
 
 
+let currentStroke=[];
 
 
 
-// =====================
-// 위치
-// =====================
+
+
+
+// ======================
+// 위치 계산
+// ======================
 
 
 function getPos(e){
 
 
-let rect =
-canvas.getBoundingClientRect();
+    let rect =
+    canvas.getBoundingClientRect();
 
 
-let x,y;
+    let x;
+    let y;
 
 
 
-if(e.touches){
+    if(e.touches){
 
-x=e.touches[0].clientX;
 
-y=e.touches[0].clientY;
+        x=e.touches[0].clientX;
+
+        y=e.touches[0].clientY;
+
+
+    }
+
+    else{
+
+
+        x=e.clientX;
+
+        y=e.clientY;
+
+
+    }
+
+
+
+    return {
+
+
+        x:x-rect.left,
+
+
+        y:y-rect.top
+
+
+    };
+
 
 }
 
-else{
-
-x=e.clientX;
-
-y=e.clientY;
-
-}
-
-
-
-return {
-
-x:x-rect.left,
-
-y:y-rect.top
-
-};
-
-
-}
 
 
 
 
 
 
-// =====================
-// 입력
-// =====================
-
+// ======================
+// 시작
+// ======================
 
 
 function start(e){
 
 
-e.preventDefault();
+    e.preventDefault();
 
 
-drawing=true;
+    drawing=true;
 
 
-let p=getPos(e);
+    currentStroke=[];
 
 
-lastX=p.x;
 
-lastY=p.y;
+    let p=getPos(e);
+
+
+
+    lastX=p.x;
+
+    lastY=p.y;
+
 
 
 }
 
+
+
+
+
+
+// ======================
+// 이동
+// ======================
 
 
 function move(e){
 
 
-if(!drawing)
+    if(!drawing)
 
-return;
-
-
-e.preventDefault();
+        return;
 
 
 
-let p=getPos(e);
+    e.preventDefault();
 
 
 
-let data={
-
-
-x1:lastX/canvas.width,
-
-y1:lastY/canvas.height,
-
-
-x2:p.x/canvas.width,
-
-y2:p.y/canvas.height,
-
-
-color:
-eraser?
-"#ffffff":
-color,
-
-
-size:Number(brushSize)
-
-
-};
+    let p=getPos(e);
 
 
 
-draw(data);
+
+    let data={
+
+
+        x1:lastX/canvas.width,
+
+        y1:lastY/canvas.height,
+
+
+        x2:p.x/canvas.width,
+
+        y2:p.y/canvas.height,
+
+
+        color:brushColor,
+
+
+        size:Number(brushSize),
+
+
+        mode:
+        isEraser?
+        "erase":
+        "draw"
 
 
 
-myHistory.push(data);
-
-
-myRedo=[];
+    };
 
 
 
-socket.send(JSON.stringify({
 
-type:"draw",
-
-data:data
-
-}));
+    draw(data);
 
 
 
-lastX=p.x;
+    currentStroke.push(data);
 
-lastY=p.y;
+
+
+    myRedo=[];
+
+
+
+
+    socket.send(JSON.stringify({
+
+        type:"draw",
+
+        data:data
+
+
+    }));
+
+
+
+
+    lastX=p.x;
+
+    lastY=p.y;
 
 
 
@@ -417,10 +474,42 @@ lastY=p.y;
 
 
 
+
+
+
+// ======================
+// 종료
+// ======================
+
+
 function end(){
 
 
-drawing=false;
+    if(!drawing)
+
+        return;
+
+
+
+    drawing=false;
+
+
+
+
+    if(currentStroke.length>0){
+
+
+        myHistory.push(
+            currentStroke
+        );
+
+
+    }
+
+
+
+
+    currentStroke=[];
 
 
 }
@@ -441,47 +530,78 @@ canvas.ontouchstart=start;
 canvas.ontouchmove=move;
 
 canvas.ontouchend=end;
-
-
-
-
-
-
-// =====================
+// ======================
 // 그리기
-// =====================
-
+// ======================
 
 
 function draw(data){
 
 
-ctx.strokeStyle=data.color;
+    ctx.lineWidth =
+    data.size;
 
 
-ctx.lineWidth=data.size;
-
-
-ctx.lineCap="round";
+    ctx.lineCap =
+    "round";
 
 
 
-ctx.beginPath();
+    if(data.mode==="erase"){
 
 
-ctx.moveTo(
-data.x1*canvas.width,
-data.y1*canvas.height
-);
+        ctx.globalCompositeOperation =
+        "destination-out";
 
 
-ctx.lineTo(
-data.x2*canvas.width,
-data.y2*canvas.height
-);
+    }
+
+    else{
 
 
-ctx.stroke();
+        ctx.globalCompositeOperation =
+        "source-over";
+
+
+        ctx.strokeStyle =
+        data.color;
+
+
+    }
+
+
+
+
+    ctx.beginPath();
+
+
+
+    ctx.moveTo(
+
+        data.x1 * canvas.width,
+
+        data.y1 * canvas.height
+
+    );
+
+
+
+    ctx.lineTo(
+
+        data.x2 * canvas.width,
+
+        data.y2 * canvas.height
+
+    );
+
+
+
+    ctx.stroke();
+
+
+
+    ctx.globalCompositeOperation =
+    "source-over";
 
 
 
@@ -492,88 +612,117 @@ ctx.stroke();
 
 
 
-// =====================
-// 서버 받기
-// =====================
 
+// ======================
+// 서버 수신
+// ======================
 
 
 socket.onmessage=e=>{
 
 
-let msg =
-JSON.parse(e.data);
+    let msg =
+    JSON.parse(e.data);
 
 
 
 
+    // 새 접속자에게 기존 그림
 
-if(msg.type==="init"){
-
-
-remoteHistory=[];
+    if(msg.type==="init"){
 
 
 
-msg.drawings.forEach(item=>{
-
-
-remoteHistory.push(
-item.data
-);
-
-
-draw(item.data);
-
-
-});
-
-
-}
+        remoteHistory=[];
 
 
 
+        msg.drawings.forEach(item=>{
+
+
+            remoteHistory.push([
+
+                item.data
+
+            ]);
 
 
 
-if(msg.type==="draw"){
+            draw(
+                item.data
+            );
 
 
-remoteHistory.push(
-msg.data
-);
+
+        });
 
 
-draw(msg.data);
 
-
-}
+    }
 
 
 
 
 
 
-if(msg.type==="clear"){
 
+    // 상대 그림
 
-remoteHistory=[];
-
-myHistory=[];
-
-myRedo=[];
+    if(msg.type==="draw"){
 
 
 
-ctx.clearRect(
-0,
-0,
-canvas.width,
-canvas.height
-);
+        remoteHistory.push([
+
+            msg.data
+
+        ]);
 
 
-}
+
+        draw(
+            msg.data
+        );
+
+
+
+    }
+
+
+
+
+
+
+    // 전체 삭제
+
+    if(msg.type==="clear"){
+
+
+
+        myHistory=[];
+
+
+        myRedo=[];
+
+
+        remoteHistory=[];
+
+
+
+        ctx.clearRect(
+
+            0,
+
+            0,
+
+            canvas.width,
+
+            canvas.height
+
+        );
+
+
+    }
 
 
 
@@ -585,29 +734,67 @@ canvas.height
 
 
 
-
-// =====================
-// Undo Redo
-// =====================
-
-
-
-undo.onclick=()=>{
-
-
-if(myHistory.length===0)
-
-return;
+// ======================
+// Undo
+// ======================
 
 
 
-myRedo.push(
-myHistory.pop()
-);
+document
+.getElementById("undo")
+.onclick=()=>{
+
+
+    if(myHistory.length===0)
+
+        return;
 
 
 
-redraw();
+    myRedo.push(
+
+        myHistory.pop()
+
+    );
+
+
+
+    redraw();
+
+
+};
+
+
+
+
+
+
+// ======================
+// Redo
+// ======================
+
+
+
+document
+.getElementById("redo")
+.onclick=()=>{
+
+
+    if(myRedo.length===0)
+
+        return;
+
+
+
+    myHistory.push(
+
+        myRedo.pop()
+
+    );
+
+
+
+    redraw();
 
 
 };
@@ -617,48 +804,52 @@ redraw();
 
 
 
-redo.onclick=()=>{
 
 
-if(myRedo.length===0)
-
-return;
-
-
-
-myHistory.push(
-myRedo.pop()
-);
-
-
-
-redraw();
-
-
-};
-
-
-
-
+// ======================
+// 다시 그리기
+// ======================
 
 
 
 function redraw(){
 
 
-ctx.clearRect(
-0,
-0,
-canvas.width,
-canvas.height
-);
+
+    ctx.clearRect(
+
+        0,
+
+        0,
+
+        canvas.width,
+
+        canvas.height
+
+    );
 
 
 
-remoteHistory.forEach(draw);
+
+    remoteHistory.forEach(stroke=>{
 
 
-myHistory.forEach(draw);
+        stroke.forEach(draw);
+
+
+    });
+
+
+
+
+
+    myHistory.forEach(stroke=>{
+
+
+        stroke.forEach(draw);
+
+
+    });
 
 
 
@@ -670,39 +861,27 @@ myHistory.forEach(draw);
 
 
 
-// =====================
+// ======================
 // 도구
-// =====================
-
-
-color.onchange=e=>{
-
-
-color=e.target.value;
-
-eraser=false;
-
-
-};
+// ======================
 
 
 
-size.oninput=e=>{
+document
+.getElementById("color")
+.onchange=e=>{
 
 
-brushSize=e.target.value;
+    brushColor =
+    e.target.value;
 
 
-};
+    isEraser=false;
 
 
-
-
-
-eraser.onclick=()=>{
-
-
-eraser=!eraser;
+    document
+    .getElementById("eraser")
+    .innerText="지우개";
 
 
 };
@@ -712,15 +891,13 @@ eraser=!eraser;
 
 
 
+document
+.getElementById("size")
+.oninput=e=>{
 
-clear.onclick=()=>{
 
-
-socket.send(JSON.stringify({
-
-type:"clear"
-
-}));
+    brushSize =
+    Number(e.target.value);
 
 
 };
@@ -729,9 +906,52 @@ type:"clear"
 
 
 
-</script>
 
 
-</body>
+document
+.getElementById("eraser")
+.onclick=()=>{
 
-</html>
+
+    isEraser =
+    !isEraser;
+
+
+
+    document
+    .getElementById("eraser")
+    .innerText =
+    isEraser?
+    "펜":
+    "지우개";
+
+
+
+};
+
+
+
+
+
+
+
+// ======================
+// 전체 삭제
+// ======================
+
+
+
+document
+.getElementById("clear")
+.onclick=()=>{
+
+
+    socket.send(JSON.stringify({
+
+        type:"clear"
+
+    }));
+
+
+
+};

@@ -1,171 +1,107 @@
-const WebSocket = require("ws");
-const http = require("http");
+// =========================
+// 도구 이벤트 강제 연결
+// =========================
 
 
-const server = http.createServer();
+const colorInput =
+document.getElementById("color");
 
 
-const wss = new WebSocket.Server({
-    server
+const sizeInput =
+document.getElementById("size");
+
+
+const eraserButton =
+document.getElementById("eraser");
+
+
+const undoButton =
+document.getElementById("undo");
+
+
+const redoButton =
+document.getElementById("redo");
+
+
+const clearButton =
+document.getElementById("clear");
+
+
+
+
+// 색 변경
+
+colorInput.addEventListener("input", e=>{
+
+
+    brushColor =
+    e.target.value;
+
+
+    isEraser=false;
+
+
+    eraserButton.innerText="지우개";
+
+
 });
 
 
 
-let clients = [];
+
+// 크기 변경
+
+sizeInput.addEventListener("input", e=>{
 
 
-// 모든 그림 저장
-let drawings = [];
+    brushSize =
+    Number(e.target.value);
 
 
-// 사용자 번호
-let userCount = 0;
-
+});
 
 
 
 
-wss.on("connection", socket=>{
+// 지우개
+
+eraserButton.addEventListener("click", ()=>{
 
 
-    const id = ++userCount;
+    isEraser =
+    !isEraser;
 
 
-    socket.userId=id;
+
+    eraserButton.innerText =
+    isEraser ?
+    "펜":
+    "지우개";
 
 
-    console.log(
-        "접속 : USER",
-        id
+});
+
+
+
+
+// Undo
+
+undoButton.addEventListener("click", ()=>{
+
+
+    if(myHistory.length===0)
+
+        return;
+
+
+
+    myRedo.push(
+        myHistory.pop()
     );
 
 
 
-    clients.push(socket);
-
-
-
-
-    // 새 접속자에게 현재 그림 전송
-
-    socket.send(JSON.stringify({
-
-        type:"init",
-
-        drawings:drawings
-
-    }));
-
-
-
-
-
-
-
-    socket.on("message",message=>{
-
-
-        let data;
-
-
-        try{
-
-            data=
-            JSON.parse(
-                message.toString()
-            );
-
-        }
-
-        catch{
-
-            return;
-
-        }
-
-
-
-
-
-        // 그림 추가
-
-        if(data.type==="draw"){
-
-
-            data.user=id;
-
-
-            drawings.push(data);
-
-
-        }
-
-
-
-
-
-
-        // 삭제
-
-        if(data.type==="clear"){
-
-
-            drawings=[];
-
-
-        }
-
-
-
-
-
-
-        // 모두에게 전송
-
-        clients.forEach(client=>{
-
-
-            if(
-                client.readyState===WebSocket.OPEN
-            ){
-
-
-                client.send(
-                    JSON.stringify(data)
-                );
-
-
-            }
-
-
-        });
-
-
-
-    });
-
-
-
-
-
-
-    socket.on("close",()=>{
-
-
-        clients =
-        clients.filter(
-            c=>c!==socket
-        );
-
-
-        console.log(
-            "나감 : USER",
-            id
-        );
-
-
-    });
-
+    redraw();
 
 
 });
@@ -173,19 +109,40 @@ wss.on("connection", socket=>{
 
 
 
+// Redo
+
+redoButton.addEventListener("click", ()=>{
 
 
-const PORT =
-process.env.PORT || 8080;
+    if(myRedo.length===0)
+
+        return;
 
 
 
-server.listen(PORT,()=>{
+    myHistory.push(
+        myRedo.pop()
+    );
 
 
-console.log(
-"WebSocket Server Running : "+PORT
-);
+    redraw();
+
+
+});
+
+
+
+
+// 전체삭제
+
+clearButton.addEventListener("click", ()=>{
+
+
+    socket.send(JSON.stringify({
+
+        type:"clear"
+
+    }));
 
 
 });
