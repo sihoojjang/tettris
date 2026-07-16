@@ -3,14 +3,17 @@
 // ===============================
 
 
-// 여기에 Render 주소 입력
-const socket = new WebSocket(
-    "wss://tettris-rkjv.onrender.com"
-);
+const SERVER_URL =
+"wss://YOUR_RENDER_SERVER.onrender.com";
 
 
 
-socket.onopen = ()=>{
+const socket =
+new WebSocket(SERVER_URL);
+
+
+
+socket.onopen=()=>{
 
     console.log(
         "WebSocket 연결 성공"
@@ -20,21 +23,21 @@ socket.onopen = ()=>{
 
 
 
-socket.onerror = error=>{
+socket.onerror=(e)=>{
 
     console.log(
         "WebSocket 오류",
-        error
+        e
     );
 
 };
 
 
 
-socket.onclose = ()=>{
+socket.onclose=()=>{
 
     console.log(
-        "WebSocket 연결 종료"
+        "WebSocket 종료"
     );
 
 };
@@ -65,41 +68,9 @@ document.getElementById("toolbar");
 
 
 
-function resizeCanvas(){
-
-
-    canvas.width =
-    window.innerWidth;
-
-
-
-    canvas.height =
-    window.innerHeight -
-    toolbar.offsetHeight;
-
-
-
-    redraw();
-
-
-}
-
-
-
-
-window.addEventListener(
-    "resize",
-    resizeCanvas
-);
-
-
-
-
-
-
 
 // ===============================
-// 상태
+// 상태 변수
 // ===============================
 
 
@@ -112,12 +83,12 @@ let size=5;
 let eraser=false;
 
 
+
 let drawing=false;
 
 
 
 let lastX=0;
-
 
 let lastY=0;
 
@@ -125,9 +96,10 @@ let lastY=0;
 
 
 
-// 현재 선
+// 현재 stroke
 
 let currentStroke=[];
+
 
 
 
@@ -140,7 +112,8 @@ let myRedo=[];
 
 
 
-// 다른 사람 기록
+
+// 서버에서 받은 그림
 
 let remoteStrokes=[];
 
@@ -150,13 +123,50 @@ let remoteStrokes=[];
 
 
 
+// ===============================
+// Canvas 크기
+// ===============================
+
+
+function resizeCanvas(){
+
+
+    canvas.width =
+    window.innerWidth;
+
+
+    canvas.height =
+    window.innerHeight -
+    toolbar.offsetHeight;
+
+
+    redraw();
+
+
+}
+
+
+
+
+window.addEventListener(
+"resize",
+resizeCanvas
+);
+
+
+
+
+
+
+
+
 
 // ===============================
-// 좌표 계산
+// 좌표
 // ===============================
 
 
-function getPos(e){
+function getPosition(e){
 
 
     const rect =
@@ -164,9 +174,7 @@ function getPos(e){
 
 
 
-    let x;
-
-    let y;
+    let x,y;
 
 
 
@@ -179,7 +187,6 @@ function getPos(e){
 
 
     }
-
     else{
 
 
@@ -194,13 +201,12 @@ function getPos(e){
 
     return {
 
-
         x:x-rect.left,
 
         y:y-rect.top
 
-
     };
+
 
 }
 
@@ -213,7 +219,7 @@ function getPos(e){
 
 
 // ===============================
-// 그리기 시작
+// 시작
 // ===============================
 
 
@@ -223,6 +229,7 @@ function startDraw(e){
     e.preventDefault();
 
 
+
     drawing=true;
 
 
@@ -230,15 +237,14 @@ function startDraw(e){
 
 
 
-    let pos =
-    getPos(e);
+    const pos =
+    getPosition(e);
 
 
 
     lastX=pos.x;
 
     lastY=pos.y;
-
 
 
 }
@@ -268,23 +274,22 @@ function moveDraw(e){
 
 
 
-    let pos =
-    getPos(e);
+    const pos =
+    getPosition(e);
 
 
 
 
-    let line={
+
+    const line={
 
 
         x1:lastX / canvas.width,
-
 
         y1:lastY / canvas.height,
 
 
         x2:pos.x / canvas.width,
-
 
         y2:pos.y / canvas.height,
 
@@ -296,7 +301,7 @@ function moveDraw(e){
 
 
         mode:
-        eraser ?
+        eraser?
         "erase":
         "draw"
 
@@ -317,7 +322,8 @@ function moveDraw(e){
 
 
 
-    if(socket.readyState===WebSocket.OPEN){
+
+    if(socket.readyState===1){
 
 
         socket.send(JSON.stringify({
@@ -336,10 +342,10 @@ function moveDraw(e){
 
 
 
+
     lastX=pos.x;
 
     lastY=pos.y;
-
 
 
 }
@@ -352,7 +358,7 @@ function moveDraw(e){
 
 
 // ===============================
-// 종료
+// 끝
 // ===============================
 
 
@@ -369,7 +375,7 @@ function endDraw(){
 
 
 
-    if(currentStroke.length>0){
+    if(currentStroke.length){
 
 
         myHistory.push(
@@ -394,8 +400,6 @@ function endDraw(){
 
 
 
-
-// 마우스
 
 canvas.addEventListener(
 "mousedown",
@@ -422,10 +426,6 @@ endDraw
 
 
 
-
-
-
-// 터치
 
 canvas.addEventListener(
 "touchstart",
@@ -457,8 +457,10 @@ function drawLine(line){
     line.size;
 
 
+
     ctx.lineCap =
     "round";
+
 
 
 
@@ -482,6 +484,8 @@ function drawLine(line){
 
 
     }
+
+
 
 
 
@@ -526,6 +530,7 @@ function drawLine(line){
 
 
 
+
 // ===============================
 // 다시 그리기
 // ===============================
@@ -549,6 +554,7 @@ function redraw(){
 
 
 
+
     remoteStrokes.forEach(stroke=>{
 
 
@@ -562,6 +568,7 @@ function redraw(){
 
 
     });
+
 
 
 
@@ -582,6 +589,7 @@ function redraw(){
     });
 
 
+
 }
 
 
@@ -593,11 +601,11 @@ function redraw(){
 
 
 // ===============================
-// 서버 데이터 받기
+// 서버 데이터
 // ===============================
 
 
-socket.onmessage=e=>{
+socket.onmessage=(e)=>{
 
 
     const msg =
@@ -607,9 +615,8 @@ socket.onmessage=e=>{
 
 
 
-    // 접속했을 때 기존 그림
-
     if(msg.type==="init"){
+
 
 
         remoteStrokes=[];
@@ -635,6 +642,7 @@ socket.onmessage=e=>{
         });
 
 
+
     }
 
 
@@ -642,10 +650,8 @@ socket.onmessage=e=>{
 
 
 
-
-    // 다른 사람 그림
-
     if(msg.type==="draw"){
+
 
 
         remoteStrokes.push([
@@ -668,14 +674,16 @@ socket.onmessage=e=>{
 
 
 
-    // 전체 삭제
 
     if(msg.type==="clear"){
 
 
+
         remoteStrokes=[];
 
+
         myHistory=[];
+
 
         myRedo=[];
 
@@ -697,6 +705,7 @@ socket.onmessage=e=>{
     }
 
 
+
 };
 
 
@@ -707,9 +716,8 @@ socket.onmessage=e=>{
 
 
 
-
 // ===============================
-// 색 변경
+// 도구
 // ===============================
 
 
@@ -717,11 +725,10 @@ document
 .getElementById("color")
 .addEventListener(
 "input",
-e=>{
+(e)=>{
 
 
-    color =
-    e.target.value;
+    color=e.target.value;
 
 
 
@@ -729,36 +736,24 @@ e=>{
 
 
 
-    document
-    .getElementById("eraser")
-    .innerText="지우개";
-
-
 });
 
 
 
 
 
-
-
-
-
-
-// ===============================
-// 크기 변경
-// ===============================
 
 
 document
 .getElementById("size")
 .addEventListener(
 "input",
-e=>{
+(e)=>{
 
 
-    size =
+    size=
     Number(e.target.value);
+
 
 
 });
@@ -767,13 +762,6 @@ e=>{
 
 
 
-
-
-
-
-// ===============================
-// 지우개
-// ===============================
 
 
 document
@@ -783,21 +771,20 @@ document
 ()=>{
 
 
-    eraser =
-    !eraser;
+    eraser=!eraser;
 
 
 
     document
     .getElementById("eraser")
     .innerText =
-    eraser ?
+    eraser?
     "펜":
     "지우개";
 
 
-});
 
+});
 
 
 
@@ -836,8 +823,8 @@ document
     redraw();
 
 
-});
 
+});
 
 
 
@@ -876,9 +863,8 @@ document
     redraw();
 
 
+
 });
-
-
 
 
 
@@ -899,7 +885,7 @@ document
 ()=>{
 
 
-    if(socket.readyState===WebSocket.OPEN){
+    if(socket.readyState===1){
 
 
         socket.send(JSON.stringify({
@@ -913,5 +899,17 @@ document
 
 
 });
+
+
+
+
+
+
+
+
+// ===============================
+// 마지막 실행
+// ===============================
+
 
 resizeCanvas();

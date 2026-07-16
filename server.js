@@ -1,27 +1,43 @@
+// ===============================
+// WebSocket Whiteboard Server
+// ===============================
+
+
 const http = require("http");
 const WebSocket = require("ws");
 
 
+
+
+// Render 서버
 
 const server =
 http.createServer();
 
 
 
+
+
 const wss =
 new WebSocket.Server({
+
     server
+
 });
 
 
 
-// 저장된 그림 데이터
+
+
+
+// 현재 그림 저장
 
 let drawings=[];
 
 
 
-// 접속자 목록
+
+// 접속자 관리
 
 let clients=[];
 
@@ -30,7 +46,11 @@ let clients=[];
 
 
 
-wss.on("connection",socket=>{
+
+
+wss.on(
+"connection",
+(socket)=>{
 
 
     console.log(
@@ -43,13 +63,18 @@ wss.on("connection",socket=>{
 
 
 
-    // 새 사용자에게 기존 그림 전달
+
+
+    // 새로 접속한 사람에게
+    // 현재 그림 전달
+
 
     socket.send(JSON.stringify({
 
         type:"init",
 
         drawings:drawings
+
 
     }));
 
@@ -59,7 +84,9 @@ wss.on("connection",socket=>{
 
 
 
-    socket.on("message",message=>{
+    socket.on(
+    "message",
+    (message)=>{
 
 
         let data;
@@ -76,10 +103,11 @@ wss.on("connection",socket=>{
 
 
         }
-
         catch(e){
 
+
             return;
+
 
         }
 
@@ -88,7 +116,10 @@ wss.on("connection",socket=>{
 
 
 
-        // 그림 추가
+
+
+        // 그림 저장
+
 
         if(data.type==="draw"){
 
@@ -96,8 +127,8 @@ wss.on("connection",socket=>{
             drawings.push(data);
 
 
-
         }
+
 
 
 
@@ -106,6 +137,7 @@ wss.on("connection",socket=>{
 
 
         // 전체 삭제
+
 
         if(data.type==="clear"){
 
@@ -121,14 +153,18 @@ wss.on("connection",socket=>{
 
 
 
+
+
         // 모든 사용자에게 전달
 
-        clients.forEach(client=>{
+
+        clients.forEach(
+        client=>{
 
 
             if(
-                client.readyState ===
-                WebSocket.OPEN
+            client.readyState ===
+            WebSocket.OPEN
             ){
 
 
@@ -155,18 +191,21 @@ wss.on("connection",socket=>{
 
 
 
-    socket.on("close",()=>{
+
+    socket.on(
+    "close",
+    ()=>{
+
+
+        console.log(
+            "client disconnected"
+        );
+
 
 
         clients =
         clients.filter(
             c=>c!==socket
-        );
-
-
-
-        console.log(
-            "client disconnected"
         );
 
 
@@ -182,16 +221,23 @@ wss.on("connection",socket=>{
 
 
 
+
+
+
+// Render 포트
+
 const PORT =
-process.env.PORT || 8080;
+process.env.PORT || 10000;
 
 
 
-server.listen(PORT,()=>{
+server.listen(
+PORT,
+()=>{
 
 
     console.log(
-        "server running",
+        "server running :",
         PORT
     );
 
