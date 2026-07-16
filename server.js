@@ -1,517 +1,149 @@
-// ===============================
-// WebSocket
-// ===============================
+const http = require("http");
+const WebSocket = require("ws");
 
 
-const socket = new WebSocket(
-    "wss://render.com/docs/troubleshooting-deploys"
-);
 
+const server =
+http.createServer();
 
 
 
-// ===============================
-// Canvas
-// ===============================
+const wss =
+new WebSocket.Server({
+    server
+});
 
 
-const canvas =
-document.getElementById("canvas");
 
+// 저장된 그림 데이터
 
-const ctx =
-canvas.getContext("2d");
+let drawings=[];
 
 
 
-const toolbar =
-document.getElementById("toolbar");
+// 접속자 목록
 
+let clients=[];
 
 
 
-function resizeCanvas(){
 
 
-    canvas.width =
-    window.innerWidth;
 
+wss.on("connection",socket=>{
 
 
-    canvas.height =
-    window.innerHeight -
-    toolbar.offsetHeight;
+    console.log(
+        "client connected"
+    );
 
 
 
-    redraw();
+    clients.push(socket);
 
 
-}
 
-
-
-window.addEventListener(
-"resize",
-resizeCanvas
-);
-
-
-
-resizeCanvas();
-
-
-
-
-
-
-
-// ===============================
-// 상태
-// ===============================
-
-
-let color =
-"#000000";
-
-
-let size =
-5;
-
-
-
-let eraser =
-false;
-
-
-
-let drawing =
-false;
-
-
-
-let lastX=0;
-
-let lastY=0;
-
-
-
-
-
-// 현재 그리고 있는 Stroke
-
-let currentStroke=[];
-
-
-
-
-// 내 작업 기록
-
-let myHistory=[];
-
-
-let myRedo=[];
-
-
-
-// 다른 사람 그림
-
-let remoteStrokes=[];
-
-
-
-
-
-
-
-// ===============================
-// 위치 변환
-// ===============================
-
-
-function getPos(e){
-
-
-    let rect =
-    canvas.getBoundingClientRect();
-
-
-
-    let x,y;
-
-
-
-    if(e.touches){
-
-
-        x=e.touches[0].clientX;
-
-        y=e.touches[0].clientY;
-
-
-    }
-
-    else{
-
-
-        x=e.clientX;
-
-        y=e.clientY;
-
-
-    }
-
-
-
-    return {
-
-
-        x:x-rect.left,
-
-        y:y-rect.top
-
-
-    };
-
-}
-
-
-
-
-
-
-
-
-
-// ===============================
-// 그리기 시작
-// ===============================
-
-
-function start(e){
-
-
-    e.preventDefault();
-
-
-    drawing=true;
-
-
-    currentStroke=[];
-
-
-
-    let p =
-    getPos(e);
-
-
-
-    lastX=p.x;
-
-    lastY=p.y;
-
-
-
-}
-
-
-
-
-
-
-
-
-// ===============================
-// 이동
-// ===============================
-
-
-function move(e){
-
-
-    if(!drawing)
-
-        return;
-
-
-
-    e.preventDefault();
-
-
-
-    let p =
-    getPos(e);
-
-
-
-
-    let line={
-
-
-        x1:lastX / canvas.width,
-
-        y1:lastY / canvas.height,
-
-
-        x2:p.x / canvas.width,
-
-        y2:p.y / canvas.height,
-
-
-        color:color,
-
-
-        size:size,
-
-
-        mode:
-        eraser ?
-        "erase":
-        "draw"
-
-
-    };
-
-
-
-
-
-    drawLine(line);
-
-
-
-    currentStroke.push(line);
-
-
+    // 새 사용자에게 기존 그림 전달
 
     socket.send(JSON.stringify({
 
-        type:"draw",
+        type:"init",
 
-        data:line
-
+        drawings:drawings
 
     }));
 
 
 
 
-    lastX=p.x;
 
-    lastY=p.y;
 
 
-}
+    socket.on("message",message=>{
 
 
+        let data;
 
 
 
+        try{
 
 
+            data =
+            JSON.parse(
+                message.toString()
+            );
 
-// ===============================
-// 종료
-// ===============================
 
+        }
 
-function end(){
+        catch(e){
 
+            return;
 
-    if(!drawing)
+        }
 
-        return;
 
 
 
-    drawing=false;
 
 
+        // 그림 추가
 
-    if(currentStroke.length>0){
+        if(data.type==="draw"){
 
 
-        myHistory.push(
-            currentStroke
-        );
+            drawings.push(data);
 
 
-        myRedo=[];
 
+        }
 
-    }
 
 
 
-    currentStroke=[];
 
 
-}
 
+        // 전체 삭제
 
+        if(data.type==="clear"){
 
 
+            drawings=[];
 
 
+        }
 
-canvas.addEventListener(
-"mousedown",
-start
-);
 
 
-canvas.addEventListener(
-"mousemove",
-move
-);
 
 
-canvas.addEventListener(
-"mouseup",
-end
-);
 
 
+        // 모든 사용자에게 전달
 
-canvas.addEventListener(
-"mouseleave",
-end
-);
+        clients.forEach(client=>{
 
 
+            if(
+                client.readyState ===
+                WebSocket.OPEN
+            ){
 
 
+                client.send(
 
-canvas.addEventListener(
-"touchstart",
-start
-);
+                    JSON.stringify(data)
 
+                );
 
-canvas.addEventListener(
-"touchmove",
-move
-);
 
-
-canvas.addEventListener(
-"touchend",
-end
-);
-// ===============================
-// 선 그리기
-// ===============================
-
-
-function drawLine(line){
-
-
-    ctx.lineWidth =
-    line.size;
-
-
-    ctx.lineCap =
-    "round";
-
-
-
-    if(line.mode==="erase"){
-
-
-        ctx.globalCompositeOperation =
-        "destination-out";
-
-
-    }
-    else{
-
-
-        ctx.globalCompositeOperation =
-        "source-over";
-
-
-        ctx.strokeStyle =
-        line.color;
-
-
-    }
-
-
-
-    ctx.beginPath();
-
-
-
-    ctx.moveTo(
-
-        line.x1 * canvas.width,
-
-        line.y1 * canvas.height
-
-    );
-
-
-
-    ctx.lineTo(
-
-        line.x2 * canvas.width,
-
-        line.y2 * canvas.height
-
-    );
-
-
-
-    ctx.stroke();
-
-
-
-    ctx.globalCompositeOperation =
-    "source-over";
-
-
-}
-
-
-
-
-
-
-
-
-
-// ===============================
-// 전체 다시 그리기
-// ===============================
-
-
-function redraw(){
-
-
-    ctx.clearRect(
-
-        0,
-
-        0,
-
-        canvas.width,
-
-        canvas.height
-
-    );
-
-
-
-    remoteStrokes.forEach(stroke=>{
-
-
-        stroke.forEach(line=>{
-
-
-            drawLine(line);
+            }
 
 
         });
+
 
 
     });
@@ -519,168 +151,30 @@ function redraw(){
 
 
 
-    myHistory.forEach(stroke=>{
 
 
-        stroke.forEach(line=>{
 
 
-            drawLine(line);
+    socket.on("close",()=>{
 
 
-        });
+        clients =
+        clients.filter(
+            c=>c!==socket
+        );
+
+
+
+        console.log(
+            "client disconnected"
+        );
+
 
 
     });
 
 
 
-}
-
-
-
-
-
-
-
-
-
-// ===============================
-// WebSocket 수신
-// ===============================
-
-
-socket.onmessage=e=>{
-
-
-    let msg =
-    JSON.parse(e.data);
-
-
-
-
-
-    if(msg.type==="init"){
-
-
-        remoteStrokes=[];
-
-
-
-        msg.drawings.forEach(item=>{
-
-
-            remoteStrokes.push(
-                [
-                    item.data
-                ]
-            );
-
-
-
-            drawLine(
-                item.data
-            );
-
-
-        });
-
-
-    }
-
-
-
-
-
-
-    if(msg.type==="draw"){
-
-
-        remoteStrokes.push(
-
-            [
-                msg.data
-            ]
-
-        );
-
-
-
-        drawLine(
-            msg.data
-        );
-
-
-    }
-
-
-
-
-
-
-    if(msg.type==="clear"){
-
-
-        myHistory=[];
-
-        myRedo=[];
-
-        remoteStrokes=[];
-
-
-
-        ctx.clearRect(
-
-            0,
-
-            0,
-
-            canvas.width,
-
-            canvas.height
-
-        );
-
-
-    }
-
-
-
-};
-
-
-
-
-
-
-
-
-
-// ===============================
-// 색 변경
-// ===============================
-
-
-document
-.getElementById("color")
-.addEventListener(
-"input",
-e=>{
-
-
-    color =
-    e.target.value;
-
-
-    eraser=false;
-
-
-
-    document
-    .getElementById("eraser")
-    .innerText="지우개";
-
-
 });
 
 
@@ -688,165 +182,18 @@ e=>{
 
 
 
+const PORT =
+process.env.PORT || 8080;
 
 
 
-// ===============================
-// 크기 변경
-// ===============================
+server.listen(PORT,()=>{
 
 
-document
-.getElementById("size")
-.addEventListener(
-"input",
-e=>{
-
-
-    size =
-    Number(e.target.value);
-
-
-});
-
-
-
-
-
-
-
-
-
-// ===============================
-// 지우개
-// ===============================
-
-
-document
-.getElementById("eraser")
-.addEventListener(
-"click",
-()=>{
-
-
-    eraser =
-    !eraser;
-
-
-
-    document
-    .getElementById("eraser")
-    .innerText =
-    eraser ?
-    "펜":
-    "지우개";
-
-
-});
-
-
-
-
-
-
-
-
-
-// ===============================
-// Undo
-// ===============================
-
-
-document
-.getElementById("undo")
-.addEventListener(
-"click",
-()=>{
-
-
-    if(myHistory.length===0)
-
-        return;
-
-
-
-    myRedo.push(
-
-        myHistory.pop()
-
+    console.log(
+        "server running",
+        PORT
     );
-
-
-
-    redraw();
-
-
-});
-
-
-
-
-
-
-
-
-
-// ===============================
-// Redo
-// ===============================
-
-
-document
-.getElementById("redo")
-.addEventListener(
-"click",
-()=>{
-
-
-    if(myRedo.length===0)
-
-        return;
-
-
-
-    myHistory.push(
-
-        myRedo.pop()
-
-    );
-
-
-
-    redraw();
-
-
-});
-
-
-
-
-
-
-
-
-
-// ===============================
-// 전체 삭제
-// ===============================
-
-
-document
-.getElementById("clear")
-.addEventListener(
-"click",
-()=>{
-
-
-    socket.send(JSON.stringify({
-
-        type:"clear"
-
-    }));
 
 
 });
