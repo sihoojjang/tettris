@@ -11,55 +11,94 @@ const wss = new WebSocket.Server({
 
 
 
-let players = [];
+let rooms = [];
+
+let roomId = 1;
 
 
 
-wss.on("connection", socket => {
 
+function findRoom(){
 
-    console.log("접속");
+    for(let room of rooms){
 
+        if(room.players.length < 2){
 
-    if(players.length >= 2){
+            return room;
 
-        socket.send(JSON.stringify({
-            type:"full"
-        }));
-
-        socket.close();
-
-        return;
+        }
 
     }
 
 
+    let newRoom={
 
-    players.push(socket);
+        id:roomId++,
+
+        players:[]
+
+    };
+
+
+    rooms.push(newRoom);
+
+
+    return newRoom;
+
+}
 
 
 
-    let id = players.length;
+
+wss.on("connection",socket=>{
 
 
-    socket.id=id;
+    let room=findRoom();
+
+
+
+    room.players.push(socket);
+
+
+
+    socket.room=room;
+
+
+
+    socket.id=
+    room.players.length;
 
 
 
     socket.send(JSON.stringify({
 
         type:"player",
-        id:id
+
+        id:socket.id,
+
+        room:room.id
 
     }));
 
 
 
-    // 두 명 모두 접속하면 시작 알림
 
-    if(players.length===2){
+    console.log(
+        "Room:",
+        room.id,
+        "Player:",
+        socket.id
+    );
 
-        players.forEach(p=>{
+
+
+
+
+    if(room.players.length===2){
+
+
+        room.players.forEach(p=>{
+
 
             p.send(JSON.stringify({
 
@@ -67,7 +106,9 @@ wss.on("connection", socket => {
 
             }));
 
+
         });
+
 
     }
 
@@ -75,7 +116,8 @@ wss.on("connection", socket => {
 
 
 
-    socket.on("message", message=>{
+
+    socket.on("message",msg=>{
 
 
         let data;
@@ -83,7 +125,7 @@ wss.on("connection", socket => {
 
         try{
 
-            data=JSON.parse(message);
+            data=JSON.parse(msg);
 
         }
         catch{
@@ -94,9 +136,21 @@ wss.on("connection", socket => {
 
 
 
-        // 상대에게 전달
 
-        players.forEach(p=>{
+
+        let room=
+        socket.room;
+
+
+
+        if(!room)
+
+        return;
+
+
+
+
+        room.players.forEach(p=>{
 
 
             if(
@@ -104,7 +158,11 @@ wss.on("connection", socket => {
                 p.readyState===WebSocket.OPEN
             ){
 
-                p.send(JSON.stringify(data));
+
+                p.send(
+                    JSON.stringify(data)
+                );
+
 
             }
 
@@ -112,8 +170,8 @@ wss.on("connection", socket => {
         });
 
 
-
     });
+
 
 
 
@@ -122,13 +180,37 @@ wss.on("connection", socket => {
     socket.on("close",()=>{
 
 
-        players =
-        players.filter(
+        let room=
+        socket.room;
+
+
+
+        if(!room)
+
+        return;
+
+
+
+
+        room.players=
+        room.players.filter(
             p=>p!==socket
         );
 
 
-        console.log("나감");
+
+
+        if(room.players.length===0){
+
+
+            rooms=
+            rooms.filter(
+                r=>r!==room
+            );
+
+
+        }
+
 
 
     });
@@ -136,6 +218,8 @@ wss.on("connection", socket => {
 
 
 });
+
+
 
 
 
@@ -149,7 +233,7 @@ server.listen(PORT,()=>{
 
 
 console.log(
-"Server running on "+PORT
+"server running"
 );
 
 
