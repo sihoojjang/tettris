@@ -5,7 +5,7 @@
 
 // 여기에 Render 주소 입력
 const socket = new WebSocket(
-    "wss://YOUR_RENDER_SERVER_ADDRESS.onrender.com"
+    "wss://tettris-rkjv.onrender.com"
 );
 
 
