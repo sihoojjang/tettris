@@ -5,14 +5,14 @@
 
 <meta charset="UTF-8">
 
-<title>Online Tetris</title>
+<title>Multi Drawing Board</title>
 
 
 <style>
 
 body{
 
-background:#111;
+background:#222;
 color:white;
 text-align:center;
 font-family:Arial;
@@ -20,38 +20,27 @@ font-family:Arial;
 }
 
 
-.container{
-
-display:flex;
-justify-content:center;
-gap:60px;
-
-}
-
-
 canvas{
 
-background:black;
-border:3px solid white;
+background:white;
+border:3px solid black;
+cursor:crosshair;
 
 }
 
 
-.area{
+.controls{
 
-display:flex;
-gap:15px;
-
-}
-
-
-#result{
-
-font-size:35px;
-color:#00ff00;
+margin:20px;
 
 }
 
+
+button,input{
+
+margin:5px;
+
+}
 
 </style>
 
@@ -59,109 +48,64 @@ color:#00ff00;
 </head>
 
 
+
 <body>
 
 
-<h1>Online Tetris</h1>
+<h1>🌐 Multi Drawing Board</h1>
 
 
-<h2 id="status">
+<p id="status">
 서버 연결 중...
-</h2>
-
-
-<h2 id="result"></h2>
-
-
-
-<div class="container">
-
-
-
-<div>
-
-
-<h2>YOU</h2>
-
-
-<div class="area">
-
-
-<div>
-
-<h3>HOLD</h3>
-
-
-<canvas id="hold"
-width="120"
-height="120">
-</canvas>
-
-
-</div>
-
-
-<canvas id="player"
-width="240"
-height="480">
-</canvas>
-
-
-
-</div>
-
-
-
-<p>
-Score :
-<span id="pScore">
-0
-</span>
 </p>
 
 
 
-<h2 id="pWin"></h2>
+<div class="controls">
+
+
+색상:
+
+<input 
+type="color"
+id="color"
+value="#000000"
+>
+
+
+크기:
+
+<input
+type="range"
+id="size"
+min="1"
+max="30"
+value="5"
+>
+
+
+
+<button id="eraser">
+지우개
+</button>
+
+
+
+<button id="clear">
+전체 지우기
+</button>
+
 
 
 </div>
 
 
 
-
-
-<div>
-
-
-<h2>OPPONENT</h2>
-
-
-
-<canvas id="enemy"
-width="240"
-height="480">
+<canvas
+id="canvas"
+width="900"
+height="600">
 </canvas>
-
-
-
-<p>
-Score :
-<span id="eScore">
-0
-</span>
-</p>
-
-
-
-<h2 id="eWin"></h2>
-
-
-
-</div>
-
-
-
-</div>
 
 
 
@@ -170,9 +114,9 @@ Score :
 <script>
 
 
-// ====================
+// ======================
 // WebSocket
-// ====================
+// ======================
 
 
 const socket =
@@ -182,24 +126,345 @@ new WebSocket(
 
 
 
-let myId=null;
-
-let started=false;
-
-
-
 socket.onopen=()=>{
 
 
 document.getElementById(
 "status"
 ).innerText=
-"서버 연결됨";
+"서버 연결 완료";
 
 
 };
 
 
+
+
+
+socket.onerror=()=>{
+
+
+document.getElementById(
+"status"
+).innerText=
+"연결 실패";
+
+
+};
+
+
+
+
+
+
+// ======================
+// Canvas
+// ======================
+
+
+const canvas =
+document.getElementById("canvas");
+
+
+const ctx =
+canvas.getContext("2d");
+
+
+
+let drawing=false;
+
+
+
+let color =
+document.getElementById("color")
+.value;
+
+
+let size =
+5;
+
+
+
+let erase=false;
+
+
+
+
+
+document
+.getElementById("color")
+.onchange=e=>{
+
+
+color=e.target.value;
+
+
+erase=false;
+
+
+};
+
+
+
+
+document
+.getElementById("size")
+.oninput=e=>{
+
+
+size=
+Number(e.target.value);
+
+
+};
+
+
+
+
+
+document
+.getElementById("eraser")
+.onclick=()=>{
+
+
+erase=!erase;
+
+
+};
+
+
+
+
+
+
+function getPos(e){
+
+
+let rect=
+canvas.getBoundingClientRect();
+
+
+
+return {
+
+
+x:e.clientX-rect.left,
+
+y:e.clientY-rect.top
+
+
+};
+
+
+}
+
+
+
+
+
+
+
+canvas.onmousedown=e=>{
+
+
+drawing=true;
+
+
+let pos=getPos(e);
+
+
+drawPoint(
+pos.x,
+pos.y
+);
+
+
+
+sendDraw({
+
+type:"start",
+
+x:pos.x,
+
+y:pos.y
+
+});
+
+
+};
+
+
+
+
+
+
+canvas.onmousemove=e=>{
+
+
+if(!drawing)
+
+return;
+
+
+
+let pos=getPos(e);
+
+
+
+drawLine(
+pos.x,
+pos.y
+);
+
+
+
+sendDraw({
+
+type:"draw",
+
+x:pos.x,
+
+y:pos.y,
+
+color:
+erase?
+"#ffffff":
+color,
+
+size:size
+
+});
+
+
+};
+
+
+
+
+
+
+canvas.onmouseup=()=>{
+
+
+drawing=false;
+
+
+};
+
+
+
+
+canvas.onmouseleave=()=>{
+
+
+drawing=false;
+
+
+};
+
+
+
+
+
+
+
+function drawPoint(x,y){
+
+
+ctx.fillStyle=
+erase?
+"#ffffff":
+color;
+
+
+
+ctx.beginPath();
+
+
+ctx.arc(
+x,
+y,
+size/2,
+0,
+Math.PI*2
+);
+
+
+ctx.fill();
+
+
+}
+
+
+
+
+
+function drawLine(x,y){
+
+
+ctx.fillStyle=
+erase?
+"#ffffff":
+color;
+
+
+
+ctx.lineWidth=size;
+
+
+ctx.lineCap="round";
+
+
+
+ctx.lineTo(x,y);
+
+
+ctx.stroke();
+
+
+ctx.beginPath();
+
+
+ctx.moveTo(x,y);
+
+
+}
+
+
+
+
+
+function sendDraw(data){
+
+
+if(
+socket.readyState===
+WebSocket.OPEN
+){
+
+
+socket.send(
+JSON.stringify(data)
+);
+
+
+}
+
+
+}
+
+
+
+
+
+
+
+// ======================
+// 다른 사람 그림 받기
+// ======================
+
+
+let remoteDrawing=false;
 
 
 
@@ -211,62 +476,18 @@ JSON.parse(e.data);
 
 
 
-if(data.type==="player"){
-
-
-myId=data.id;
-
-
-console.log(
-"내 번호:",
-myId
-);
-
-
-}
-
-
-
-
 if(data.type==="start"){
 
 
-started=true;
+remoteDrawing=true;
 
 
-document.getElementById(
-"status"
-).innerText=
-"게임 시작";
+ctx.beginPath();
 
 
-}
-
-
-
-
-if(data.type==="full"){
-
-
-document.getElementById(
-"status"
-).innerText=
-"방이 가득참";
-
-
-}
-
-
-
-
-// 상대 입력 처리
-
-
-if(data.type==="move"){
-
-
-enemy.move(
-data.value
+ctx.moveTo(
+data.x,
+data.y
 );
 
 
@@ -274,209 +495,41 @@ data.value
 
 
 
+if(data.type==="draw"){
 
-if(data.type==="rotate"){
 
 
-enemy.rotate();
+ctx.strokeStyle=
+data.color;
 
 
-}
 
+ctx.lineWidth=
+data.size;
 
 
 
-if(data.type==="drop"){
+ctx.lineCap="round";
 
 
-enemy.drop();
 
+ctx.lineTo(
+data.x,
+data.y
+);
 
-}
 
 
+ctx.stroke();
 
 
-if(data.type==="hardDrop"){
 
+ctx.beginPath();
 
-enemy.hardDrop();
 
-
-}
-
-
-
-
-if(data.type==="hold"){
-
-
-enemy.hold();
-
-
-}
-
-
-
-};
-
-
-
-// ====================
-// TETRIS DATA
-// ====================
-
-
-const ROW=20;
-const COL=10;
-const SIZE=24;
-
-
-
-const colors=[
-
-"",
-"cyan",
-"yellow",
-"purple",
-"green",
-"red",
-"blue",
-"orange"
-
-];
-
-
-
-const shapes=[
-
-
-[
-[1,1,1,1]
-],
-
-
-[
-[1,1],
-[1,1]
-],
-
-
-[
-[0,1,0],
-[1,1,1]
-],
-
-
-[
-[1,0,0],
-[1,1,1]
-],
-
-
-[
-[0,0,1],
-[1,1,1]
-],
-
-
-[
-[1,1,0],
-[0,1,1]
-],
-
-
-[
-[0,1,1],
-[1,1,0]
-]
-
-
-];
-
-
-
-
-
-let gameEnd=false;
-
-
-
-
-
-class Tetris{
-
-
-constructor(
-canvas,
-score,
-name,
-holdCanvas=null
-){
-
-
-this.canvas=canvas;
-
-
-this.ctx=
-canvas.getContext("2d");
-
-
-
-this.score=
-document.getElementById(score);
-
-
-
-this.name=name;
-
-
-
-this.board=
-this.createBoard();
-
-
-
-this.block=
-this.newBlock();
-
-
-
-this.scoreValue=0;
-
-
-
-this.over=false;
-
-
-
-this.holdPiece=null;
-
-
-
-this.canHold=true;
-
-
-
-this.holdCanvas=
-holdCanvas;
-
-
-}
-
-
-
-
-
-
-createBoard(){
-
-
-return Array.from(
-{
-length:ROW
-},
-()=>Array(COL).fill(0)
+ctx.moveTo(
+data.x,
+data.y
 );
 
 
@@ -484,777 +537,14 @@ length:ROW
 
 
 
-
-
-
-
-newBlock(id=null){
-
-
-
-if(id===null)
-
-id=
-Math.floor(
-Math.random()*7
-)+1;
-
-
-
-return {
-
-
-id:id,
-
-
-shape:
-JSON.parse(
-JSON.stringify(
-shapes[id-1]
-)
-),
-
-
-x:3,
-
-
-y:0
-
-
-};
-
-
-}
-
-
-
-
-
-
-draw(){
-
-
-
-this.ctx.clearRect(
-0,
-0,
-240,
-480
-);
-
-
-
-
-for(
-let y=0;
-y<ROW;
-y++
-){
-
-
-for(
-let x=0;
-x<COL;
-x++
-){
-
-
-
-if(this.board[y][x]){
-
-
-this.cell(
-x,
-y,
-this.board[y][x]
-);
-
-
-}
-
-
-
-}
-
-
-
-}
-
-
-
-
-this.drawGhost();
-
-
-
-
-this.block.shape.forEach(
-(row,y)=>{
-
-
-row.forEach(
-(v,x)=>{
-
-
-if(v)
-
-this.cell(
-this.block.x+x,
-this.block.y+y,
-this.block.id
-);
-
-
-});
-
-
-});
-
-
-
-}
-
-
-
-
-
-
-cell(x,y,id){
-
-
-this.ctx.fillStyle=
-colors[id];
-
-
-
-this.ctx.fillRect(
-x*SIZE,
-y*SIZE,
-SIZE,
-SIZE
-);
-
-
-
-this.ctx.strokeStyle="#222";
-
-
-this.ctx.strokeRect(
-x*SIZE,
-y*SIZE,
-SIZE,
-SIZE
-);
-
-
-}
-
-
-
-
-drawGhost(){
-
-
-let gy=this.block.y;
-
-
-
-while(
-!this.collisionAt(
-this.block.x,
-gy+1
-)
-){
-
-gy++;
-
-}
-
-
-
-
-this.block.shape.forEach(
-(row,y)=>{
-
-
-row.forEach(
-(v,x)=>{
-
-
-if(v){
-
-
-this.ctx.fillStyle=
-"rgba(255,255,255,0.25)";
-
-
-this.ctx.fillRect(
-(this.block.x+x)*SIZE,
-(gy+y)*SIZE,
-SIZE,
-SIZE
-);
-
-
-}
-
-
-
-});
-
-
-});
-
-
-}
-
-
-
-
-
-
-collision(){
-
-
-return this.collisionAt(
-this.block.x,
-this.block.y
-);
-
-
-}
-
-
-
-
-
-
-collisionAt(px,py){
-
-
-
-for(
-let y=0;
-y<this.block.shape.length;
-y++
-){
-
-
-for(
-let x=0;
-x<this.block.shape[y].length;
-x++
-){
-
-
-
-if(
-this.block.shape[y][x]
-){
-
-
-
-let nx=
-px+x;
-
-
-let ny=
-py+y;
-
-
-
-if(
-nx<0 ||
-nx>=COL ||
-ny>=ROW ||
-this.board[ny][nx]
-)
-
-return true;
-
-
-}
-
-
-}
-
-
-}
-
-
-
-return false;
-
-
-}
-// ====================
-// GAME LOGIC
-// ====================
-
-
-
-drop(){
-
-
-if(
-this.over ||
-gameEnd
-)
-
-return;
-
-
-
-this.block.y++;
-
-
-
-if(this.collision()){
-
-
-this.block.y--;
-
-
-
-this.merge();
-
-
-
-if(this.checkOver()){
-
-
-this.over=true;
-
-
-sendGameOver();
-
-
-return;
-
-
-}
-
-
-
-this.clear();
-
-
-
-this.block=
-this.newBlock();
-
-
-
-this.canHold=true;
-
-
-
-}
-
-
-
-this.draw();
-
-
-}
-
-
-
-
-
-
-hardDrop(){
-
-
-
-if(
-this.over ||
-gameEnd
-)
-
-return;
-
-
-
-while(
-!this.collisionAt(
-this.block.x,
-this.block.y+1
-)
-){
-
-this.block.y++;
-
-}
-
-
-
-this.merge();
-
-
-
-if(this.checkOver()){
-
-
-this.over=true;
-
-
-sendGameOver();
-
-
-return;
-
-
-}
-
-
-
-this.clear();
-
-
-
-this.block=
-this.newBlock();
-
-
-
-this.canHold=true;
-
-
-
-this.draw();
-
-
-}
-
-
-
-
-
-
-merge(){
-
-
-this.block.shape.forEach(
-(row,y)=>{
-
-
-row.forEach(
-(v,x)=>{
-
-
-if(v){
-
-
-this.board[
-this.block.y+y
-]
-[
-this.block.x+x
-]
-=
-this.block.id;
-
-
-}
-
-
-
-});
-
-
-});
-
-
-}
-
-
-
-
-
-checkOver(){
-
-
-return this.board[0].some(
-v=>v!==0
-);
-
-
-}
-
-
-
-
-
-clear(){
-
-
-
-for(
-let y=ROW-1;
-y>=0;
-y--
-){
-
-
-
-if(
-this.board[y].every(
-v=>v!==0
-)
-){
-
-
-
-this.board.splice(
-y,
-1
-);
-
-
-
-this.board.unshift(
-Array(COL).fill(0)
-);
-
-
-
-this.scoreValue+=100;
-
-
-
-this.score.innerText=
-this.scoreValue;
-
-
-
-y++;
-
-
-}
-
-
-
-}
-
-
-}
-
-
-
-
-
-
-
-move(dx){
-
-
-if(this.over)
-
-return;
-
-
-
-this.block.x+=dx;
-
-
-
-if(this.collision())
-
-this.block.x-=dx;
-
-
-
-this.draw();
-
-
-}
-
-
-
-
-
-
-rotate(){
-
-
-let old=
-this.block.shape;
-
-
-
-let rotated=
-old[0].map(
-(_,i)=>
-old.map(
-r=>r[i]
-)
-.reverse()
-);
-
-
-
-this.block.shape=
-rotated;
-
-
-
-if(this.collision())
-
-this.block.shape=
-old;
-
-
-
-this.draw();
-
-
-}
-
-
-
-
-
-
-
-hold(){
-
-
-if(
-!this.canHold ||
-this.over
-)
-
-return;
-
-
-
-let current=
-this.block.id;
-
-
-
-if(
-this.holdPiece===null
-){
-
-
-this.holdPiece=
-current;
-
-
-this.block=
-this.newBlock();
-
-
-}
-
-else{
-
-
-let temp=
-this.holdPiece;
-
-
-
-this.holdPiece=
-current;
-
-
-
-this.block=
-this.newBlock(
-temp
-);
-
-
-}
-
-
-
-this.block.x=3;
-
-this.block.y=0;
-
-
-
-this.canHold=false;
-
-
-
-this.drawHold();
-
-
-this.draw();
-
-
-}
-
-
-
-
-
-
-
-drawHold(){
-
-
-if(!this.holdCanvas)
-
-return;
-
-
-
-let ctx=
-this.holdCanvas
-.getContext("2d");
-
+if(data.type==="clear"){
 
 
 ctx.clearRect(
 0,
 0,
-120,
-120
-);
-
-
-
-if(
-this.holdPiece===null
-)
-
-return;
-
-
-
-let id=
-this.holdPiece;
-
-
-
-shapes[id-1]
-.forEach(
-(row,y)=>{
-
-
-row.forEach(
-(v,x)=>{
-
-
-if(v){
-
-
-ctx.fillStyle=
-colors[id];
-
-
-
-ctx.fillRect(
-x*24+25,
-y*24+25,
-24,
-24
+canvas.width,
+canvas.height
 );
 
 
@@ -1262,270 +552,47 @@ y*24+25,
 
 
 
-});
+};
 
 
-});
 
 
-}
 
 
-// ====================
-// START GAME
-// ====================
+// ======================
+// 전체 지우기
+// ======================
 
 
-const player =
-new Tetris(
-document.getElementById("player"),
-"pScore",
-"PLAYER",
-document.getElementById("hold")
+document
+.getElementById("clear")
+.onclick=()=>{
+
+
+ctx.clearRect(
+0,
+0,
+canvas.width,
+canvas.height
 );
 
 
 
-const enemy =
-new Tetris(
-document.getElementById("enemy"),
-"eScore",
-"ENEMY"
-);
+sendDraw({
 
-
-
-
-// 내 블록 자동 낙하
-
-setInterval(()=>{
-
-
-if(started && !gameEnd){
-
-
-player.drop();
-
-
-
-socket.send(JSON.stringify({
-
-type:"drop"
-
-}));
-
-
-}
-
-
-},500);
-
-
-
-
-
-
-// 키 입력
-
-
-document.addEventListener(
-"keydown",
-e=>{
-
-
-if(!started)
-
-return;
-
-
-
-if(e.key==="ArrowLeft"){
-
-
-player.move(-1);
-
-
-
-socket.send(JSON.stringify({
-
-type:"move",
-
-value:-1
-
-}));
-
-
-}
-
-
-
-if(e.key==="ArrowRight"){
-
-
-player.move(1);
-
-
-
-socket.send(JSON.stringify({
-
-type:"move",
-
-value:1
-
-}));
-
-
-}
-
-
-
-
-
-if(e.key==="ArrowUp"){
-
-
-player.rotate();
-
-
-
-socket.send(JSON.stringify({
-
-type:"rotate"
-
-}));
-
-
-}
-
-
-
-
-
-
-if(e.key==="ArrowDown"){
-
-
-player.drop();
-
-
-
-socket.send(JSON.stringify({
-
-type:"drop"
-
-}));
-
-
-}
-
-
-
-
-
-if(e.code==="Space"){
-
-
-e.preventDefault();
-
-
-
-player.hardDrop();
-
-
-
-socket.send(JSON.stringify({
-
-type:"hardDrop"
-
-}));
-
-
-}
-
-
-
-
-
-if(e.key.toLowerCase()==="c"){
-
-
-
-player.hold();
-
-
-
-socket.send(JSON.stringify({
-
-type:"hold"
-
-}));
-
-
-
-}
-
-
-
+type:"clear"
 
 });
 
 
+};
 
 
 
 
-
-function sendGameOver(){
-
+</script>
 
 
-socket.send(JSON.stringify({
+</body>
 
-type:"lose"
-
-}));
-
-
-}
-
-
-
-socket.addEventListener(
-"message",
-e=>{
-
-
-let data=
-JSON.parse(e.data);
-
-
-
-if(data.type==="lose"){
-
-
-gameEnd=true;
-
-
-
-document.getElementById(
-"result"
-)
-.innerText=
-"WIN!";
-
-
-}
-
-
-});
-
-
-
-
-
-
-player.draw();
-
-enemy.draw();
-
-player.drawHold();
+</html>

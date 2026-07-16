@@ -11,158 +11,35 @@ const wss = new WebSocket.Server({
 
 
 
-let rooms = [];
+let clients = [];
 
-let roomId = 1;
 
 
+wss.on("connection", socket => {
 
 
-function findRoom(){
+    console.log("사용자 접속");
 
-    for(let room of rooms){
 
-        if(room.players.length < 2){
+    clients.push(socket);
 
-            return room;
 
-        }
 
-    }
+    socket.on("message", message => {
 
 
-    let newRoom={
 
-        id:roomId++,
+        // 받은 그림 데이터를 모든 사람에게 전달
 
-        players:[]
-
-    };
-
-
-    rooms.push(newRoom);
-
-
-    return newRoom;
-
-}
-
-
-
-
-wss.on("connection",socket=>{
-
-
-    let room=findRoom();
-
-
-
-    room.players.push(socket);
-
-
-
-    socket.room=room;
-
-
-
-    socket.id=
-    room.players.length;
-
-
-
-    socket.send(JSON.stringify({
-
-        type:"player",
-
-        id:socket.id,
-
-        room:room.id
-
-    }));
-
-
-
-
-    console.log(
-        "Room:",
-        room.id,
-        "Player:",
-        socket.id
-    );
-
-
-
-
-
-    if(room.players.length===2){
-
-
-        room.players.forEach(p=>{
-
-
-            p.send(JSON.stringify({
-
-                type:"start"
-
-            }));
-
-
-        });
-
-
-    }
-
-
-
-
-
-
-    socket.on("message",msg=>{
-
-
-        let data;
-
-
-        try{
-
-            data=JSON.parse(msg);
-
-        }
-        catch{
-
-            return;
-
-        }
-
-
-
-
-
-        let room=
-        socket.room;
-
-
-
-        if(!room)
-
-        return;
-
-
-
-
-        room.players.forEach(p=>{
+        clients.forEach(client => {
 
 
             if(
-                p!==socket &&
-                p.readyState===WebSocket.OPEN
+                client !== socket &&
+                client.readyState === WebSocket.OPEN
             ){
 
-
-                p.send(
-                    JSON.stringify(data)
-                );
-
+                client.send(message.toString());
 
             }
 
@@ -176,41 +53,16 @@ wss.on("connection",socket=>{
 
 
 
-
     socket.on("close",()=>{
 
 
-        let room=
-        socket.room;
-
-
-
-        if(!room)
-
-        return;
-
-
-
-
-        room.players=
-        room.players.filter(
-            p=>p!==socket
+        clients =
+        clients.filter(
+            c=>c!==socket
         );
 
 
-
-
-        if(room.players.length===0){
-
-
-            rooms=
-            rooms.filter(
-                r=>r!==room
-            );
-
-
-        }
-
+        console.log("사용자 나감");
 
 
     });
@@ -218,7 +70,6 @@ wss.on("connection",socket=>{
 
 
 });
-
 
 
 
@@ -232,9 +83,9 @@ process.env.PORT || 8080;
 server.listen(PORT,()=>{
 
 
-console.log(
-"server running"
-);
+    console.log(
+        "WebSocket Server Running : "+PORT
+    );
 
 
 });
