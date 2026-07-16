@@ -5,8 +5,7 @@
 
 <meta charset="UTF-8">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Realtime Whiteboard</title>
 
@@ -20,18 +19,14 @@
 }
 
 
-body{
+html,body{
 
-    width:100vw;
-    height:100vh;
+    width:100%;
+    height:100%;
 
     overflow:hidden;
 
-    background:#222;
-
 }
-
-
 
 
 #toolbar{
@@ -48,136 +43,81 @@ body{
 
     gap:10px;
 
-
-    background:#333;
-
-}
-
-
-
-
-button,
-input{
-
-
-    border:none;
-
-    border-radius:10px;
-
+    background:#222;
 
 }
-
 
 
 button{
 
+    padding:10px 15px;
 
-    padding:10px 14px;
+    border:0;
 
-
-    color:white;
+    border-radius:10px;
 
     background:#555;
 
+    color:white;
 
-    font-size:15px;
-
-
-}
-
-
-
-
-button:active{
-
-
-    transform:scale(0.95);
-
+    cursor:pointer;
 
 }
 
 
+button:hover{
+
+    background:#777;
+
+}
 
 
-#canvas{
-
+canvas{
 
     display:block;
 
-
     background:white;
-
 
     touch-action:none;
 
-
 }
-
-
 
 
 </style>
 
-
 </head>
-
 
 
 <body>
 
 
-
 <div id="toolbar">
 
 
-<input
-type="color"
-id="color"
-value="#000000"
->
+<input id="color" type="color" value="#000000">
 
 
-
-<input
-type="range"
-id="size"
-min="1"
-max="50"
-value="5"
->
-
+<input id="size" type="range" min="1" max="50" value="5">
 
 
 <button id="eraser">
-
 지우개
-
 </button>
-
 
 
 <button id="undo">
-
-↶ 이전
-
+이전
 </button>
-
 
 
 <button id="redo">
-
-↷ 다음
-
+다음
 </button>
-
 
 
 <button id="clear">
-
 전체삭제
-
 </button>
-
 
 
 </div>
@@ -188,10 +128,7 @@ value="5"
 
 
 
-
-
-<script src="script.js"></script>
-
+<script src="./script.js"></script>
 
 
 </body>

@@ -4,8 +4,9 @@
 
 
 const socket = new WebSocket(
-    "wss://YOUR_RENDER_SERVER_ADDRESS"
+    "wss://render.com/docs/troubleshooting-deploys"
 );
+
 
 
 
@@ -25,6 +26,7 @@ canvas.getContext("2d");
 
 const toolbar =
 document.getElementById("toolbar");
+
 
 
 
@@ -62,52 +64,30 @@ resizeCanvas();
 
 
 
-// ===============================
-// 도구 상태
-// ===============================
-
-
-let brushColor="#000000";
-
-
-let brushSize=5;
-
-
-let isEraser=false;
-
-
-
 
 
 // ===============================
-// 기록
+// 상태
 // ===============================
 
 
-// 내 그림
+let color =
+"#000000";
 
-let myHistory=[];
 
-
-// 다시 그릴 그림
-
-let myRedo=[];
+let size =
+5;
 
 
 
-// 다른 사람 그림
-
-let remoteHistory=[];
-
-
-
-// 현재 그리고 있는 선
-
-let currentStroke=[];
+let eraser =
+false;
 
 
 
-let drawing=false;
+let drawing =
+false;
+
 
 
 let lastX=0;
@@ -118,23 +98,46 @@ let lastY=0;
 
 
 
+// 현재 그리고 있는 Stroke
+
+let currentStroke=[];
+
+
+
+
+// 내 작업 기록
+
+let myHistory=[];
+
+
+let myRedo=[];
+
+
+
+// 다른 사람 그림
+
+let remoteStrokes=[];
+
+
+
+
+
 
 
 // ===============================
-// 위치 계산
+// 위치 변환
 // ===============================
 
 
-function getPosition(e){
+function getPos(e){
 
 
-    const rect =
+    let rect =
     canvas.getBoundingClientRect();
 
 
 
-    let x;
-    let y;
+    let x,y;
 
 
 
@@ -176,34 +179,36 @@ function getPosition(e){
 
 
 
+
+
+
+
 // ===============================
 // 그리기 시작
 // ===============================
 
 
-function startDraw(e){
+function start(e){
 
 
     e.preventDefault();
 
 
-
     drawing=true;
-
 
 
     currentStroke=[];
 
 
 
-    let pos =
-    getPosition(e);
+    let p =
+    getPos(e);
 
 
 
-    lastX=pos.x;
+    lastX=p.x;
 
-    lastY=pos.y;
+    lastY=p.y;
 
 
 
@@ -215,12 +220,13 @@ function startDraw(e){
 
 
 
+
 // ===============================
-// 그리는 중
+// 이동
 // ===============================
 
 
-function drawingMove(e){
+function move(e){
 
 
     if(!drawing)
@@ -233,33 +239,33 @@ function drawingMove(e){
 
 
 
-    let pos =
-    getPosition(e);
+    let p =
+    getPos(e);
 
 
 
 
-    let data={
+    let line={
 
 
-        x1:lastX/canvas.width,
+        x1:lastX / canvas.width,
 
-        y1:lastY/canvas.height,
-
-
-        x2:pos.x/canvas.width,
-
-        y2:pos.y/canvas.height,
+        y1:lastY / canvas.height,
 
 
-        color:brushColor,
+        x2:p.x / canvas.width,
+
+        y2:p.y / canvas.height,
 
 
-        size:brushSize,
+        color:color,
+
+
+        size:size,
 
 
         mode:
-        isEraser?
+        eraser ?
         "erase":
         "draw"
 
@@ -270,11 +276,11 @@ function drawingMove(e){
 
 
 
-    drawLine(data);
+    drawLine(line);
 
 
 
-    currentStroke.push(data);
+    currentStroke.push(line);
 
 
 
@@ -282,7 +288,7 @@ function drawingMove(e){
 
         type:"draw",
 
-        data:data
+        data:line
 
 
     }));
@@ -290,11 +296,9 @@ function drawingMove(e){
 
 
 
+    lastX=p.x;
 
-    lastX=pos.x;
-
-    lastY=pos.y;
-
+    lastY=p.y;
 
 
 }
@@ -304,12 +308,14 @@ function drawingMove(e){
 
 
 
+
+
 // ===============================
-// 그리기 종료
+// 종료
 // ===============================
 
 
-function endDraw(){
+function end(){
 
 
     if(!drawing)
@@ -319,7 +325,6 @@ function endDraw(){
 
 
     drawing=false;
-
 
 
 
@@ -338,9 +343,7 @@ function endDraw(){
 
 
 
-
     currentStroke=[];
-
 
 
 }
@@ -349,28 +352,30 @@ function endDraw(){
 
 
 
+
+
 canvas.addEventListener(
 "mousedown",
-startDraw
+start
 );
 
 
 canvas.addEventListener(
 "mousemove",
-drawingMove
+move
 );
 
 
 canvas.addEventListener(
 "mouseup",
-endDraw
+end
 );
 
 
 
 canvas.addEventListener(
 "mouseleave",
-endDraw
+end
 );
 
 
@@ -379,30 +384,30 @@ endDraw
 
 canvas.addEventListener(
 "touchstart",
-startDraw
+start
 );
 
 
 canvas.addEventListener(
 "touchmove",
-drawingMove
+move
 );
 
 
 canvas.addEventListener(
 "touchend",
-endDraw
+end
 );
 // ===============================
-// 실제 그리기
+// 선 그리기
 // ===============================
 
 
-function drawLine(data){
+function drawLine(line){
 
 
     ctx.lineWidth =
-    data.size;
+    line.size;
 
 
     ctx.lineCap =
@@ -410,7 +415,7 @@ function drawLine(data){
 
 
 
-    if(data.mode==="erase"){
+    if(line.mode==="erase"){
 
 
         ctx.globalCompositeOperation =
@@ -418,7 +423,6 @@ function drawLine(data){
 
 
     }
-
     else{
 
 
@@ -427,11 +431,10 @@ function drawLine(data){
 
 
         ctx.strokeStyle =
-        data.color;
+        line.color;
 
 
     }
-
 
 
 
@@ -441,9 +444,9 @@ function drawLine(data){
 
     ctx.moveTo(
 
-        data.x1 * canvas.width,
+        line.x1 * canvas.width,
 
-        data.y1 * canvas.height
+        line.y1 * canvas.height
 
     );
 
@@ -451,9 +454,9 @@ function drawLine(data){
 
     ctx.lineTo(
 
-        data.x2 * canvas.width,
+        line.x2 * canvas.width,
 
-        data.y2 * canvas.height
+        line.y2 * canvas.height
 
     );
 
@@ -468,6 +471,8 @@ function drawLine(data){
 
 
 }
+
+
 
 
 
@@ -497,8 +502,7 @@ function redraw(){
 
 
 
-
-    remoteHistory.forEach(stroke=>{
+    remoteStrokes.forEach(stroke=>{
 
 
         stroke.forEach(line=>{
@@ -511,7 +515,6 @@ function redraw(){
 
 
     });
-
 
 
 
@@ -543,37 +546,35 @@ function redraw(){
 
 
 // ===============================
-// 서버 데이터 받기
+// WebSocket 수신
 // ===============================
 
 
 socket.onmessage=e=>{
 
 
-    const msg =
+    let msg =
     JSON.parse(e.data);
 
 
 
 
 
-    // 처음 접속했을 때 기존 그림 받기
-
     if(msg.type==="init"){
 
 
-        remoteHistory=[];
+        remoteStrokes=[];
 
 
 
         msg.drawings.forEach(item=>{
 
 
-            remoteHistory.push([
-
-                item.data
-
-            ]);
+            remoteStrokes.push(
+                [
+                    item.data
+                ]
+            );
 
 
 
@@ -592,17 +593,16 @@ socket.onmessage=e=>{
 
 
 
-    // 다른 사람이 그린 그림
-
     if(msg.type==="draw"){
 
 
+        remoteStrokes.push(
 
-        remoteHistory.push([
+            [
+                msg.data
+            ]
 
-            msg.data
-
-        ]);
+        );
 
 
 
@@ -618,9 +618,6 @@ socket.onmessage=e=>{
 
 
 
-
-    // 전체 삭제
-
     if(msg.type==="clear"){
 
 
@@ -628,7 +625,7 @@ socket.onmessage=e=>{
 
         myRedo=[];
 
-        remoteHistory=[];
+        remoteStrokes=[];
 
 
 
@@ -658,8 +655,9 @@ socket.onmessage=e=>{
 
 
 
+
 // ===============================
-// 도구
+// 색 변경
 // ===============================
 
 
@@ -670,11 +668,11 @@ document
 e=>{
 
 
-    brushColor =
+    color =
     e.target.value;
 
 
-    isEraser=false;
+    eraser=false;
 
 
 
@@ -689,6 +687,15 @@ e=>{
 
 
 
+
+
+
+
+// ===============================
+// 크기 변경
+// ===============================
+
+
 document
 .getElementById("size")
 .addEventListener(
@@ -696,7 +703,7 @@ document
 e=>{
 
 
-    brushSize =
+    size =
     Number(e.target.value);
 
 
@@ -707,6 +714,14 @@ e=>{
 
 
 
+
+
+
+// ===============================
+// 지우개
+// ===============================
+
+
 document
 .getElementById("eraser")
 .addEventListener(
@@ -714,21 +729,21 @@ document
 ()=>{
 
 
-    isEraser =
-    !isEraser;
+    eraser =
+    !eraser;
 
 
 
     document
     .getElementById("eraser")
     .innerText =
-    isEraser?
+    eraser ?
     "펜":
     "지우개";
 
 
-
 });
+
 
 
 
@@ -766,8 +781,9 @@ document
     redraw();
 
 
-
 });
+
+
 
 
 
@@ -804,8 +820,9 @@ document
     redraw();
 
 
-
 });
+
+
 
 
 
@@ -830,7 +847,6 @@ document
         type:"clear"
 
     }));
-
 
 
 });
