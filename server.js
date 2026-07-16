@@ -2,76 +2,82 @@ const WebSocket = require("ws");
 const http = require("http");
 
 
-// HTTP 서버 생성
 const server = http.createServer();
 
 
-// WebSocket 서버
 const wss = new WebSocket.Server({
     server
 });
 
 
 
-// 접속자 목록
 let clients = [];
 
 
-
-// 현재 그림 데이터 저장
-// 새로 들어온 사람에게 보내기 위해 사용
+// 모든 그림 저장
 let drawings = [];
 
 
+// 사용자 번호
+let userCount = 0;
 
 
 
-wss.on("connection", socket => {
 
 
-    console.log("사용자 접속");
+wss.on("connection", socket=>{
+
+
+    const id = ++userCount;
+
+
+    socket.userId=id;
+
+
+    console.log(
+        "접속 : USER",
+        id
+    );
+
 
 
     clients.push(socket);
 
 
 
-    // 새 사용자에게 기존 그림 전달
 
-    drawings.forEach(data=>{
+    // 새 접속자에게 현재 그림 전송
 
+    socket.send(JSON.stringify({
 
-        socket.send(
-            JSON.stringify(data)
-        );
+        type:"init",
 
+        drawings:drawings
 
-    });
-
+    }));
 
 
 
 
 
-    socket.on("message", message => {
 
+
+    socket.on("message",message=>{
 
 
         let data;
 
 
-
         try{
 
-            data =
+            data=
             JSON.parse(
                 message.toString()
             );
 
-
         }
 
-        catch(e){
+        catch{
 
             return;
 
@@ -81,10 +87,12 @@ wss.on("connection", socket => {
 
 
 
-
-        // 그림 저장
+        // 그림 추가
 
         if(data.type==="draw"){
+
+
+            data.user=id;
 
 
             drawings.push(data);
@@ -96,7 +104,8 @@ wss.on("connection", socket => {
 
 
 
-        // 전체 삭제
+
+        // 삭제
 
         if(data.type==="clear"){
 
@@ -111,14 +120,13 @@ wss.on("connection", socket => {
 
 
 
-
-        // 모든 사용자에게 전달
+        // 모두에게 전송
 
         clients.forEach(client=>{
 
 
             if(
-                client.readyState === WebSocket.OPEN
+                client.readyState===WebSocket.OPEN
             ){
 
 
@@ -141,14 +149,7 @@ wss.on("connection", socket => {
 
 
 
-
-
-
     socket.on("close",()=>{
-
-
-        console.log("사용자 나감");
-
 
 
         clients =
@@ -156,6 +157,11 @@ wss.on("connection", socket => {
             c=>c!==socket
         );
 
+
+        console.log(
+            "나감 : USER",
+            id
+        );
 
 
     });
@@ -169,21 +175,17 @@ wss.on("connection", socket => {
 
 
 
-
-
 const PORT =
 process.env.PORT || 8080;
-
 
 
 
 server.listen(PORT,()=>{
 
 
-    console.log(
-        "WebSocket Server Running : "
-        + PORT
-    );
+console.log(
+"WebSocket Server Running : "+PORT
+);
 
 
 });
