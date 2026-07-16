@@ -94,11 +94,6 @@ window.addEventListener(
 
 
 
-resizeCanvas();
-
-
-
-
 
 
 
@@ -918,3 +913,5 @@ document
 
 
 });
+
+resizeCanvas();
