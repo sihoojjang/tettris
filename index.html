@@ -5,30 +5,40 @@
 
 <meta charset="UTF-8">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-<title>Multi Draw</title>
+
+<title>Realtime Whiteboard</title>
 
 
 <style>
 
 *{
+    margin:0;
+    padding:0;
     box-sizing:border-box;
 }
 
 
 body{
 
-    margin:0;
+    width:100vw;
+    height:100vh;
+
     overflow:hidden;
-    background:#202124;
+
+    background:#222;
 
 }
 
 
+
+
 #toolbar{
 
-    height:80px;
+    height:70px;
+
+    width:100%;
 
     display:flex;
 
@@ -36,20 +46,24 @@ body{
 
     justify-content:center;
 
-    gap:8px;
+    gap:10px;
 
-    background:#292929;
+
+    background:#333;
 
 }
+
 
 
 
 button,
 input{
 
-    border:0;
 
-    border-radius:12px;
+    border:none;
+
+    border-radius:10px;
+
 
 }
 
@@ -57,85 +71,111 @@ input{
 
 button{
 
-    padding:10px 15px;
 
-    background:#444;
+    padding:10px 14px;
+
 
     color:white;
 
+    background:#555;
+
+
     font-size:15px;
 
-}
-
-
-
-button:hover{
-
-    background:#666;
 
 }
 
 
 
-canvas{
+
+button:active{
+
+
+    transform:scale(0.95);
+
+
+}
+
+
+
+
+#canvas{
+
 
     display:block;
 
+
     background:white;
+
 
     touch-action:none;
 
+
 }
+
 
 
 
 </style>
 
+
 </head>
 
 
+
 <body>
+
 
 
 <div id="toolbar">
 
 
 <input
-id="color"
 type="color"
+id="color"
 value="#000000"
 >
 
 
+
 <input
-id="size"
 type="range"
+id="size"
 min="1"
-max="40"
+max="50"
 value="5"
 >
 
 
 
 <button id="eraser">
+
 지우개
+
 </button>
 
 
 
 <button id="undo">
+
 ↶ 이전
+
 </button>
 
 
+
 <button id="redo">
+
 ↷ 다음
+
 </button>
 
 
 
 <button id="clear">
-삭제
+
+전체삭제
+
 </button>
 
 
@@ -149,809 +189,12 @@ value="5"
 
 
 
-<script>
 
+<script src="script.js"></script>
 
-// ======================
-// WebSocket
-// ======================
 
 
-const socket =
-new WebSocket(
-"wss://YOUR_SERVER_ADDRESS"
-);
+</body>
 
 
-
-
-
-// ======================
-// Canvas
-// ======================
-
-
-const canvas =
-document.getElementById("canvas");
-
-
-const ctx =
-canvas.getContext("2d");
-
-
-
-
-
-function resize(){
-
-
-    let old =
-    canvas.toDataURL();
-
-
-
-    canvas.width =
-    window.innerWidth;
-
-
-
-    canvas.height =
-    window.innerHeight-80;
-
-
-
-
-    if(old !== "data:,"){
-
-
-        let img =
-        new Image();
-
-
-        img.onload=()=>{
-
-
-            ctx.drawImage(
-                img,
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-
-
-        };
-
-
-        img.src=old;
-
-
-    }
-
-
-
-}
-
-
-
-resize();
-
-
-window.addEventListener(
-"resize",
-resize
-);
-
-
-
-
-
-
-// ======================
-// 상태
-// ======================
-
-
-let brushColor="#000000";
-
-
-let brushSize=5;
-
-
-let isEraser=false;
-
-
-
-let drawing=false;
-
-
-
-let lastX=0;
-
-let lastY=0;
-
-
-
-// Stroke 단위 저장
-
-let myHistory=[];
-
-
-let myRedo=[];
-
-
-let remoteHistory=[];
-
-
-
-let currentStroke=[];
-
-
-
-
-
-
-// ======================
-// 위치 계산
-// ======================
-
-
-function getPos(e){
-
-
-    let rect =
-    canvas.getBoundingClientRect();
-
-
-    let x;
-    let y;
-
-
-
-    if(e.touches){
-
-
-        x=e.touches[0].clientX;
-
-        y=e.touches[0].clientY;
-
-
-    }
-
-    else{
-
-
-        x=e.clientX;
-
-        y=e.clientY;
-
-
-    }
-
-
-
-    return {
-
-
-        x:x-rect.left,
-
-
-        y:y-rect.top
-
-
-    };
-
-
-}
-
-
-
-
-
-
-
-// ======================
-// 시작
-// ======================
-
-
-function start(e){
-
-
-    e.preventDefault();
-
-
-    drawing=true;
-
-
-    currentStroke=[];
-
-
-
-    let p=getPos(e);
-
-
-
-    lastX=p.x;
-
-    lastY=p.y;
-
-
-
-}
-
-
-
-
-
-
-// ======================
-// 이동
-// ======================
-
-
-function move(e){
-
-
-    if(!drawing)
-
-        return;
-
-
-
-    e.preventDefault();
-
-
-
-    let p=getPos(e);
-
-
-
-
-    let data={
-
-
-        x1:lastX/canvas.width,
-
-        y1:lastY/canvas.height,
-
-
-        x2:p.x/canvas.width,
-
-        y2:p.y/canvas.height,
-
-
-        color:brushColor,
-
-
-        size:Number(brushSize),
-
-
-        mode:
-        isEraser?
-        "erase":
-        "draw"
-
-
-
-    };
-
-
-
-
-    draw(data);
-
-
-
-    currentStroke.push(data);
-
-
-
-    myRedo=[];
-
-
-
-
-    socket.send(JSON.stringify({
-
-        type:"draw",
-
-        data:data
-
-
-    }));
-
-
-
-
-    lastX=p.x;
-
-    lastY=p.y;
-
-
-
-}
-
-
-
-
-
-
-// ======================
-// 종료
-// ======================
-
-
-function end(){
-
-
-    if(!drawing)
-
-        return;
-
-
-
-    drawing=false;
-
-
-
-
-    if(currentStroke.length>0){
-
-
-        myHistory.push(
-            currentStroke
-        );
-
-
-    }
-
-
-
-
-    currentStroke=[];
-
-
-}
-
-
-
-
-
-canvas.onmousedown=start;
-
-canvas.onmousemove=move;
-
-canvas.onmouseup=end;
-
-
-canvas.ontouchstart=start;
-
-canvas.ontouchmove=move;
-
-canvas.ontouchend=end;
-// ======================
-// 그리기
-// ======================
-
-
-function draw(data){
-
-
-    ctx.lineWidth =
-    data.size;
-
-
-    ctx.lineCap =
-    "round";
-
-
-
-    if(data.mode==="erase"){
-
-
-        ctx.globalCompositeOperation =
-        "destination-out";
-
-
-    }
-
-    else{
-
-
-        ctx.globalCompositeOperation =
-        "source-over";
-
-
-        ctx.strokeStyle =
-        data.color;
-
-
-    }
-
-
-
-
-    ctx.beginPath();
-
-
-
-    ctx.moveTo(
-
-        data.x1 * canvas.width,
-
-        data.y1 * canvas.height
-
-    );
-
-
-
-    ctx.lineTo(
-
-        data.x2 * canvas.width,
-
-        data.y2 * canvas.height
-
-    );
-
-
-
-    ctx.stroke();
-
-
-
-    ctx.globalCompositeOperation =
-    "source-over";
-
-
-
-}
-
-
-
-
-
-
-
-// ======================
-// 서버 수신
-// ======================
-
-
-socket.onmessage=e=>{
-
-
-    let msg =
-    JSON.parse(e.data);
-
-
-
-
-    // 새 접속자에게 기존 그림
-
-    if(msg.type==="init"){
-
-
-
-        remoteHistory=[];
-
-
-
-        msg.drawings.forEach(item=>{
-
-
-            remoteHistory.push([
-
-                item.data
-
-            ]);
-
-
-
-            draw(
-                item.data
-            );
-
-
-
-        });
-
-
-
-    }
-
-
-
-
-
-
-
-    // 상대 그림
-
-    if(msg.type==="draw"){
-
-
-
-        remoteHistory.push([
-
-            msg.data
-
-        ]);
-
-
-
-        draw(
-            msg.data
-        );
-
-
-
-    }
-
-
-
-
-
-
-    // 전체 삭제
-
-    if(msg.type==="clear"){
-
-
-
-        myHistory=[];
-
-
-        myRedo=[];
-
-
-        remoteHistory=[];
-
-
-
-        ctx.clearRect(
-
-            0,
-
-            0,
-
-            canvas.width,
-
-            canvas.height
-
-        );
-
-
-    }
-
-
-
-};
-
-
-
-
-
-
-
-// ======================
-// Undo
-// ======================
-
-
-
-document
-.getElementById("undo")
-.onclick=()=>{
-
-
-    if(myHistory.length===0)
-
-        return;
-
-
-
-    myRedo.push(
-
-        myHistory.pop()
-
-    );
-
-
-
-    redraw();
-
-
-};
-
-
-
-
-
-
-// ======================
-// Redo
-// ======================
-
-
-
-document
-.getElementById("redo")
-.onclick=()=>{
-
-
-    if(myRedo.length===0)
-
-        return;
-
-
-
-    myHistory.push(
-
-        myRedo.pop()
-
-    );
-
-
-
-    redraw();
-
-
-};
-
-
-
-
-
-
-
-
-// ======================
-// 다시 그리기
-// ======================
-
-
-
-function redraw(){
-
-
-
-    ctx.clearRect(
-
-        0,
-
-        0,
-
-        canvas.width,
-
-        canvas.height
-
-    );
-
-
-
-
-    remoteHistory.forEach(stroke=>{
-
-
-        stroke.forEach(draw);
-
-
-    });
-
-
-
-
-
-    myHistory.forEach(stroke=>{
-
-
-        stroke.forEach(draw);
-
-
-    });
-
-
-
-}
-
-
-
-
-
-
-
-// ======================
-// 도구
-// ======================
-
-
-
-document
-.getElementById("color")
-.onchange=e=>{
-
-
-    brushColor =
-    e.target.value;
-
-
-    isEraser=false;
-
-
-    document
-    .getElementById("eraser")
-    .innerText="지우개";
-
-
-};
-
-
-
-
-
-
-document
-.getElementById("size")
-.oninput=e=>{
-
-
-    brushSize =
-    Number(e.target.value);
-
-
-};
-
-
-
-
-
-
-
-document
-.getElementById("eraser")
-.onclick=()=>{
-
-
-    isEraser =
-    !isEraser;
-
-
-
-    document
-    .getElementById("eraser")
-    .innerText =
-    isEraser?
-    "펜":
-    "지우개";
-
-
-
-};
-
-
-
-
-
-
-
-// ======================
-// 전체 삭제
-// ======================
-
-
-
-document
-.getElementById("clear")
-.onclick=()=>{
-
-
-    socket.send(JSON.stringify({
-
-        type:"clear"
-
-    }));
-
-
-
-};
+</html>
