@@ -6,8 +6,9 @@ const server = http.createServer();
 
 
 const wss = new WebSocket.Server({
-    server: server
+    server
 });
+
 
 
 let players = [];
@@ -17,27 +18,64 @@ let players = [];
 wss.on("connection", socket => {
 
 
-    console.log("player connected");
+    console.log("접속");
+
+
+    if(players.length >= 2){
+
+        socket.send(JSON.stringify({
+            type:"full"
+        }));
+
+        socket.close();
+
+        return;
+
+    }
+
 
 
     players.push(socket);
 
 
 
-    // 접속 순서로 플레이어 번호 부여
-    socket.playerId = players.length;
+    let id = players.length;
+
+
+    socket.id=id;
 
 
 
     socket.send(JSON.stringify({
-        type:"connected",
-        id:socket.playerId
+
+        type:"player",
+        id:id
+
     }));
 
 
 
+    // 두 명 모두 접속하면 시작 알림
 
-    socket.on("message", message => {
+    if(players.length===2){
+
+        players.forEach(p=>{
+
+            p.send(JSON.stringify({
+
+                type:"start"
+
+            }));
+
+        });
+
+    }
+
+
+
+
+
+    socket.on("message", message=>{
 
 
         let data;
@@ -48,7 +86,7 @@ wss.on("connection", socket => {
             data=JSON.parse(message);
 
         }
-        catch(e){
+        catch{
 
             return;
 
@@ -56,16 +94,17 @@ wss.on("connection", socket => {
 
 
 
-        // 나 제외한 상대에게 전달
-        players.forEach(player=>{
+        // 상대에게 전달
+
+        players.forEach(p=>{
 
 
             if(
-                player !== socket &&
-                player.readyState === WebSocket.OPEN
+                p!==socket &&
+                p.readyState===WebSocket.OPEN
             ){
 
-                player.send(JSON.stringify(data));
+                p.send(JSON.stringify(data));
 
             }
 
@@ -83,13 +122,13 @@ wss.on("connection", socket => {
     socket.on("close",()=>{
 
 
-        console.log("player disconnected");
-
-
         players =
         players.filter(
             p=>p!==socket
         );
+
+
+        console.log("나감");
 
 
     });
@@ -110,7 +149,7 @@ server.listen(PORT,()=>{
 
 
 console.log(
-"WebSocket server running : "+PORT
+"Server running on "+PORT
 );
 
 
