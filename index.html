@@ -11,42 +11,32 @@
 <style>
 
 body{
-
-background:#222;
-color:white;
-text-align:center;
-font-family:Arial;
-
+    background:#222;
+    color:white;
+    text-align:center;
+    font-family:Arial;
 }
 
 
 canvas{
-
-background:white;
-border:3px solid black;
-cursor:crosshair;
-
+    background:white;
+    border:3px solid black;
+    cursor:crosshair;
 }
 
 
 .controls{
-
-margin:20px;
-
+    margin:20px;
 }
 
 
 button,input{
-
-margin:5px;
-
+    margin:5px;
 }
 
 </style>
 
-
 </head>
-
 
 
 <body>
@@ -64,7 +54,7 @@ margin:5px;
 <div class="controls">
 
 
-색상:
+색상
 
 <input 
 type="color"
@@ -73,7 +63,7 @@ value="#000000"
 >
 
 
-크기:
+크기
 
 <input
 type="range"
@@ -84,11 +74,9 @@ value="5"
 >
 
 
-
 <button id="eraser">
 지우개
 </button>
-
 
 
 <button id="clear">
@@ -96,8 +84,8 @@ value="5"
 </button>
 
 
-
 </div>
+
 
 
 
@@ -128,31 +116,19 @@ new WebSocket(
 
 socket.onopen=()=>{
 
-
-document.getElementById(
-"status"
-).innerText=
-"서버 연결 완료";
-
+document.getElementById("status")
+.innerText="서버 연결 완료";
 
 };
-
-
 
 
 
 socket.onerror=()=>{
 
-
-document.getElementById(
-"status"
-).innerText=
-"연결 실패";
-
+document.getElementById("status")
+.innerText="연결 실패";
 
 };
-
-
 
 
 
@@ -174,18 +150,18 @@ canvas.getContext("2d");
 let drawing=false;
 
 
-
-let color =
-document.getElementById("color")
-.value;
+let color="#000000";
 
 
-let size =
-5;
-
+let size=5;
 
 
 let erase=false;
+
+
+
+let lastX=0;
+let lastY=0;
 
 
 
@@ -195,14 +171,12 @@ document
 .getElementById("color")
 .onchange=e=>{
 
-
 color=e.target.value;
-
 
 erase=false;
 
-
 };
+
 
 
 
@@ -211,10 +185,8 @@ document
 .getElementById("size")
 .oninput=e=>{
 
-
 size=
 Number(e.target.value);
-
 
 };
 
@@ -226,9 +198,7 @@ document
 .getElementById("eraser")
 .onclick=()=>{
 
-
 erase=!erase;
-
 
 };
 
@@ -239,22 +209,17 @@ erase=!erase;
 
 function getPos(e){
 
-
 let rect=
 canvas.getBoundingClientRect();
 
 
-
 return {
-
 
 x:e.clientX-rect.left,
 
 y:e.clientY-rect.top
 
-
 };
-
 
 }
 
@@ -273,9 +238,17 @@ drawing=true;
 let pos=getPos(e);
 
 
-drawPoint(
-pos.x,
-pos.y
+
+lastX=pos.x;
+lastY=pos.y;
+
+
+
+ctx.beginPath();
+
+ctx.moveTo(
+lastX,
+lastY
 );
 
 
@@ -284,14 +257,15 @@ sendDraw({
 
 type:"start",
 
-x:pos.x,
+x:lastX,
 
-y:pos.y
+y:lastY
 
 });
 
 
 };
+
 
 
 
@@ -312,6 +286,8 @@ let pos=getPos(e);
 
 
 drawLine(
+lastX,
+lastY,
 pos.x,
 pos.y
 );
@@ -322,9 +298,13 @@ sendDraw({
 
 type:"draw",
 
-x:pos.x,
+x1:lastX,
 
-y:pos.y,
+y1:lastY,
+
+x2:pos.x,
+
+y2:pos.y,
 
 color:
 erase?
@@ -334,6 +314,13 @@ color,
 size:size
 
 });
+
+
+
+lastX=pos.x;
+
+lastY=pos.y;
+
 
 
 };
@@ -349,8 +336,10 @@ canvas.onmouseup=()=>{
 drawing=false;
 
 
-};
+ctx.beginPath();
 
+
+};
 
 
 
@@ -360,6 +349,9 @@ canvas.onmouseleave=()=>{
 drawing=false;
 
 
+ctx.beginPath();
+
+
 };
 
 
@@ -368,41 +360,16 @@ drawing=false;
 
 
 
-function drawPoint(x,y){
-
-
-ctx.fillStyle=
-erase?
-"#ffffff":
-color;
-
-
-
-ctx.beginPath();
-
-
-ctx.arc(
-x,
-y,
-size/2,
-0,
-Math.PI*2
-);
-
-
-ctx.fill();
-
-
-}
+function drawLine(
+x1,
+y1,
+x2,
+y2
+){
 
 
 
-
-
-function drawLine(x,y){
-
-
-ctx.fillStyle=
+ctx.strokeStyle=
 erase?
 "#ffffff":
 color;
@@ -415,20 +382,30 @@ ctx.lineWidth=size;
 ctx.lineCap="round";
 
 
+ctx.beginPath();
 
-ctx.lineTo(x,y);
+
+
+ctx.moveTo(
+x1,
+y1
+);
+
+
+
+ctx.lineTo(
+x2,
+y2
+);
+
 
 
 ctx.stroke();
 
 
-ctx.beginPath();
-
-
-ctx.moveTo(x,y);
-
-
 }
+
+
 
 
 
@@ -460,11 +437,8 @@ JSON.stringify(data)
 
 
 // ======================
-// 다른 사람 그림 받기
+// 상대 그림 받기
 // ======================
-
-
-let remoteDrawing=false;
 
 
 
@@ -476,10 +450,8 @@ JSON.parse(e.data);
 
 
 
+
 if(data.type==="start"){
-
-
-remoteDrawing=true;
 
 
 ctx.beginPath();
@@ -495,8 +467,10 @@ data.y
 
 
 
-if(data.type==="draw"){
 
+
+
+if(data.type==="draw"){
 
 
 ctx.strokeStyle=
@@ -513,9 +487,20 @@ ctx.lineCap="round";
 
 
 
+ctx.beginPath();
+
+
+
+ctx.moveTo(
+data.x1,
+data.y1
+);
+
+
+
 ctx.lineTo(
-data.x,
-data.y
+data.x2,
+data.y2
 );
 
 
@@ -523,17 +508,11 @@ data.y
 ctx.stroke();
 
 
-
-ctx.beginPath();
-
-
-ctx.moveTo(
-data.x,
-data.y
-);
-
-
 }
+
+
+
+
 
 
 
@@ -559,9 +538,11 @@ canvas.height
 
 
 
+
 // ======================
-// 전체 지우기
+// 전체 삭제
 // ======================
+
 
 
 document
