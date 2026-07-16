@@ -1,41 +1,60 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
 
 <meta charset="UTF-8">
-<title>1vs1 Tetris</title>
+
+<title>Online Tetris</title>
+
 
 <style>
 
 body{
-    background:#111;
-    color:white;
-    text-align:center;
-    font-family:Arial;
+
+background:#111;
+color:white;
+text-align:center;
+font-family:Arial;
+
 }
+
 
 .container{
-    display:flex;
-    justify-content:center;
-    gap:60px;
+
+display:flex;
+justify-content:center;
+gap:60px;
+
 }
 
-.area{
-    display:flex;
-    gap:15px;
-}
 
 canvas{
-    background:black;
-    border:3px solid white;
+
+background:black;
+border:3px solid white;
+
 }
+
+
+.area{
+
+display:flex;
+gap:15px;
+
+}
+
 
 #result{
-    color:#00ff00;
-    font-size:35px;
+
+font-size:35px;
+color:#00ff00;
+
 }
 
+
 </style>
+
 
 </head>
 
@@ -43,28 +62,41 @@ canvas{
 <body>
 
 
-<h1>1 VS 1 Tetris</h1>
+<h1>Online Tetris</h1>
+
+
+<h2 id="status">
+서버 연결 중...
+</h2>
+
 
 <h2 id="result"></h2>
+
 
 
 <div class="container">
 
 
+
 <div>
 
-<h2>PLAYER</h2>
+
+<h2>YOU</h2>
+
 
 <div class="area">
+
 
 <div>
 
 <h3>HOLD</h3>
 
+
 <canvas id="hold"
 width="120"
 height="120">
 </canvas>
+
 
 </div>
 
@@ -75,25 +107,35 @@ height="480">
 </canvas>
 
 
+
 </div>
+
 
 
 <p>
 Score :
-<span id="pScore">0</span>
+<span id="pScore">
+0
+</span>
 </p>
+
 
 
 <h2 id="pWin"></h2>
 
+
 </div>
+
 
 
 
 
 <div>
 
-<h2>ENEMY</h2>
+
+<h2>OPPONENT</h2>
+
+
 
 <canvas id="enemy"
 width="240"
@@ -101,22 +143,188 @@ height="480">
 </canvas>
 
 
+
 <p>
 Score :
-<span id="eScore">0</span>
+<span id="eScore">
+0
+</span>
 </p>
+
 
 
 <h2 id="eWin"></h2>
 
-</div>
 
 
 </div>
+
+
+
+</div>
+
+
 
 
 
 <script>
+
+
+// ====================
+// WebSocket
+// ====================
+
+
+const socket =
+new WebSocket(
+"wss://YOUR_SERVER_ADDRESS"
+);
+
+
+
+let myId=null;
+
+let started=false;
+
+
+
+socket.onopen=()=>{
+
+
+document.getElementById(
+"status"
+).innerText=
+"서버 연결됨";
+
+
+};
+
+
+
+
+
+socket.onmessage=e=>{
+
+
+let data=
+JSON.parse(e.data);
+
+
+
+if(data.type==="player"){
+
+
+myId=data.id;
+
+
+console.log(
+"내 번호:",
+myId
+);
+
+
+}
+
+
+
+
+if(data.type==="start"){
+
+
+started=true;
+
+
+document.getElementById(
+"status"
+).innerText=
+"게임 시작";
+
+
+}
+
+
+
+
+if(data.type==="full"){
+
+
+document.getElementById(
+"status"
+).innerText=
+"방이 가득참";
+
+
+}
+
+
+
+
+// 상대 입력 처리
+
+
+if(data.type==="move"){
+
+
+enemy.move(
+data.value
+);
+
+
+}
+
+
+
+
+if(data.type==="rotate"){
+
+
+enemy.rotate();
+
+
+}
+
+
+
+
+if(data.type==="drop"){
+
+
+enemy.drop();
+
+
+}
+
+
+
+
+if(data.type==="hardDrop"){
+
+
+enemy.hardDrop();
+
+
+}
+
+
+
+
+if(data.type==="hold"){
+
+
+enemy.hold();
+
+
+}
+
+
+
+};
+
+
+
+// ====================
+// TETRIS DATA
+// ====================
 
 
 const ROW=20;
@@ -124,10 +332,9 @@ const COL=10;
 const SIZE=24;
 
 
-const socket = new WebSocket(
-    "wss://너의서버주소"
-);
+
 const colors=[
+
 "",
 "cyan",
 "yellow",
@@ -136,45 +343,58 @@ const colors=[
 "red",
 "blue",
 "orange"
+
 ];
 
 
 
 const shapes=[
 
-[[1,1,1,1]],
+
+[
+[1,1,1,1]
+],
+
 
 [
 [1,1],
 [1,1]
 ],
 
+
 [
 [0,1,0],
 [1,1,1]
 ],
+
 
 [
 [1,0,0],
 [1,1,1]
 ],
 
+
 [
 [0,0,1],
 [1,1,1]
 ],
+
 
 [
 [1,1,0],
 [0,1,1]
 ],
 
+
 [
 [0,1,1],
 [1,1,0]
 ]
 
+
 ];
+
+
 
 
 
@@ -182,16 +402,25 @@ let gameEnd=false;
 
 
 
+
+
 class Tetris{
 
 
-constructor(canvas,score,name,holdCanvas=null){
+constructor(
+canvas,
+score,
+name,
+holdCanvas=null
+){
 
 
 this.canvas=canvas;
 
+
 this.ctx=
 canvas.getContext("2d");
+
 
 
 this.score=
@@ -200,6 +429,7 @@ document.getElementById(score);
 
 
 this.name=name;
+
 
 
 this.board=
@@ -215,62 +445,94 @@ this.newBlock();
 this.scoreValue=0;
 
 
+
 this.over=false;
 
 
 
-// 수정된 부분
 this.holdPiece=null;
+
 
 
 this.canHold=true;
 
 
-this.holdCanvas=holdCanvas;
+
+this.holdCanvas=
+holdCanvas;
 
 
 }
+
+
 
 
 
 
 createBoard(){
 
+
 return Array.from(
-{length:ROW},
+{
+length:ROW
+},
 ()=>Array(COL).fill(0)
 );
 
+
 }
+
+
+
+
 
 
 
 newBlock(id=null){
 
 
-if(id===null){
 
-id=Math.floor(Math.random()*7)+1;
+if(id===null)
 
-}
+id=
+Math.floor(
+Math.random()*7
+)+1;
 
 
 
 return {
 
+
 id:id,
 
-shape:shapes[id-1],
+
+shape:
+JSON.parse(
+JSON.stringify(
+shapes[id-1]
+)
+),
+
 
 x:3,
 
+
 y:0
+
 
 };
 
 
 }
+
+
+
+
+
+
 draw(){
+
 
 
 this.ctx.clearRect(
@@ -282,10 +544,20 @@ this.ctx.clearRect(
 
 
 
-for(let y=0;y<ROW;y++){
+
+for(
+let y=0;
+y<ROW;
+y++
+){
 
 
-for(let x=0;x<COL;x++){
+for(
+let x=0;
+x<COL;
+x++
+){
+
 
 
 if(this.board[y][x]){
@@ -301,10 +573,13 @@ this.board[y][x]
 }
 
 
+
 }
 
 
+
 }
+
 
 
 
@@ -312,14 +587,16 @@ this.drawGhost();
 
 
 
-this.block.shape.forEach((row,y)=>{
+
+this.block.shape.forEach(
+(row,y)=>{
 
 
-row.forEach((v,x)=>{
+row.forEach(
+(v,x)=>{
 
 
-if(v){
-
+if(v)
 
 this.cell(
 this.block.x+x,
@@ -328,16 +605,15 @@ this.block.id
 );
 
 
-}
-
-
 });
 
 
 });
 
 
+
 }
+
 
 
 
@@ -348,6 +624,7 @@ cell(x,y,id){
 
 this.ctx.fillStyle=
 colors[id];
+
 
 
 this.ctx.fillRect(
@@ -375,7 +652,6 @@ SIZE
 
 
 
-
 drawGhost(){
 
 
@@ -396,10 +672,13 @@ gy++;
 
 
 
-this.block.shape.forEach((row,y)=>{
+
+this.block.shape.forEach(
+(row,y)=>{
 
 
-row.forEach((v,x)=>{
+row.forEach(
+(v,x)=>{
 
 
 if(v){
@@ -420,6 +699,7 @@ SIZE
 }
 
 
+
 });
 
 
@@ -427,6 +707,7 @@ SIZE
 
 
 }
+
 
 
 
@@ -447,26 +728,38 @@ this.block.y
 
 
 
+
 collisionAt(px,py){
 
 
-let b=this.block;
+
+for(
+let y=0;
+y<this.block.shape.length;
+y++
+){
+
+
+for(
+let x=0;
+x<this.block.shape[y].length;
+x++
+){
 
 
 
-for(let y=0;y<b.shape.length;y++){
+if(
+this.block.shape[y][x]
+){
 
 
-for(let x=0;x<b.shape[y].length;x++){
+
+let nx=
+px+x;
 
 
-
-if(b.shape[y][x]){
-
-
-let nx=px+x;
-
-let ny=py+y;
+let ny=
+py+y;
 
 
 
@@ -494,8 +787,9 @@ return false;
 
 
 }
-
-
+// ====================
+// GAME LOGIC
+// ====================
 
 
 
@@ -532,7 +826,7 @@ if(this.checkOver()){
 this.over=true;
 
 
-endGame(this.name);
+sendGameOver();
 
 
 return;
@@ -554,6 +848,7 @@ this.newBlock();
 this.canHold=true;
 
 
+
 }
 
 
@@ -567,7 +862,9 @@ this.draw();
 
 
 
+
 hardDrop(){
+
 
 
 if(
@@ -602,7 +899,7 @@ if(this.checkOver()){
 this.over=true;
 
 
-endGame(this.name);
+sendGameOver();
 
 
 return;
@@ -634,26 +931,33 @@ this.draw();
 
 
 
+
 merge(){
 
 
-let b=this.block;
+this.block.shape.forEach(
+(row,y)=>{
 
 
-
-b.shape.forEach((row,y)=>{
-
-
-row.forEach((v,x)=>{
+row.forEach(
+(v,x)=>{
 
 
-if(v)
+if(v){
+
 
 this.board[
-b.y+y
-][
-b.x+x
-]=b.id;
+this.block.y+y
+]
+[
+this.block.x+x
+]
+=
+this.block.id;
+
+
+}
+
 
 
 });
@@ -685,15 +989,27 @@ v=>v!==0
 clear(){
 
 
-for(let y=ROW-1;y>=0;y--){
 
-
-if(
-this.board[y].every(v=>v!==0)
+for(
+let y=ROW-1;
+y>=0;
+y--
 ){
 
 
-this.board.splice(y,1);
+
+if(
+this.board[y].every(
+v=>v!==0
+)
+){
+
+
+
+this.board.splice(
+y,
+1
+);
 
 
 
@@ -718,10 +1034,13 @@ y++;
 }
 
 
+
 }
 
 
 }
+
+
 
 
 
@@ -755,29 +1074,35 @@ this.draw();
 
 
 
+
 rotate(){
 
 
-let old=this.block.shape;
+let old=
+this.block.shape;
 
 
 
 let rotated=
 old[0].map(
-(_,i)=>old.map(
+(_,i)=>
+old.map(
 r=>r[i]
-).reverse()
+)
+.reverse()
 );
 
 
 
-this.block.shape=rotated;
+this.block.shape=
+rotated;
 
 
 
 if(this.collision())
 
-this.block.shape=old;
+this.block.shape=
+old;
 
 
 
@@ -785,27 +1110,37 @@ this.draw();
 
 
 }
+
+
+
+
+
+
+
 hold(){
 
 
 if(
 !this.canHold ||
-this.over ||
-gameEnd
+this.over
 )
 
 return;
 
 
 
-let current=this.block.id;
+let current=
+this.block.id;
 
 
 
-if(this.holdPiece===null){
+if(
+this.holdPiece===null
+){
 
 
-this.holdPiece=current;
+this.holdPiece=
+current;
 
 
 this.block=
@@ -817,14 +1152,20 @@ this.newBlock();
 else{
 
 
-let temp=this.holdPiece;
+let temp=
+this.holdPiece;
 
 
-this.holdPiece=current;
+
+this.holdPiece=
+current;
+
 
 
 this.block=
-this.newBlock(temp);
+this.newBlock(
+temp
+);
 
 
 }
@@ -843,10 +1184,13 @@ this.canHold=false;
 
 this.drawHold();
 
+
 this.draw();
 
 
 }
+
+
 
 
 
@@ -862,7 +1206,8 @@ return;
 
 
 let ctx=
-this.holdCanvas.getContext("2d");
+this.holdCanvas
+.getContext("2d");
 
 
 
@@ -875,20 +1220,26 @@ ctx.clearRect(
 
 
 
-if(this.holdPiece===null)
+if(
+this.holdPiece===null
+)
 
 return;
 
 
 
-let id=this.holdPiece;
+let id=
+this.holdPiece;
 
 
 
-shapes[id-1].forEach((row,y)=>{
+shapes[id-1]
+.forEach(
+(row,y)=>{
 
 
-row.forEach((v,x)=>{
+row.forEach(
+(v,x)=>{
 
 
 if(v){
@@ -896,6 +1247,7 @@ if(v){
 
 ctx.fillStyle=
 colors[id];
+
 
 
 ctx.fillRect(
@@ -906,19 +1258,8 @@ y*24+25,
 );
 
 
-
-ctx.strokeStyle="#222";
-
-
-ctx.strokeRect(
-x*24+25,
-y*24+25,
-24,
-24
-);
-
-
 }
+
 
 
 });
@@ -930,54 +1271,12 @@ y*24+25,
 }
 
 
-
-}
-
-
-
+// ====================
+// START GAME
+// ====================
 
 
-function endGame(loser){
-
-
-gameEnd=true;
-
-
-
-let winner=
-loser==="PLAYER"
-?
-"ENEMY"
-:
-"PLAYER";
-
-
-
-document.getElementById("result")
-.innerText=
-winner+" WIN!";
-
-
-
-if(winner==="PLAYER")
-
-document.getElementById("pWin")
-.innerText="WIN";
-
-
-else
-
-document.getElementById("eWin")
-.innerText="WIN";
-
-
-}
-
-
-
-
-
-let player=
+const player =
 new Tetris(
 document.getElementById("player"),
 "pScore",
@@ -987,7 +1286,7 @@ document.getElementById("hold")
 
 
 
-let enemy=
+const enemy =
 new Tetris(
 document.getElementById("enemy"),
 "eScore",
@@ -997,34 +1296,23 @@ document.getElementById("enemy"),
 
 
 
+// 내 블록 자동 낙하
 
 setInterval(()=>{
+
+
+if(started && !gameEnd){
+
 
 player.drop();
 
-},500);
 
 
+socket.send(JSON.stringify({
 
+type:"drop"
 
-
-setInterval(()=>{
-
-
-enemy.drop();
-
-
-
-if(
-!enemy.over &&
-!gameEnd &&
-Math.random()<0.5
-){
-
-
-enemy.move(
-Math.random()<0.5?-1:1
-);
+}));
 
 
 }
@@ -1037,32 +1325,98 @@ Math.random()<0.5?-1:1
 
 
 
+// 키 입력
+
+
 document.addEventListener(
 "keydown",
 e=>{
 
 
-if(e.key==="ArrowLeft")
+if(!started)
+
+return;
+
+
+
+if(e.key==="ArrowLeft"){
+
 
 player.move(-1);
 
 
 
-if(e.key==="ArrowRight")
+socket.send(JSON.stringify({
+
+type:"move",
+
+value:-1
+
+}));
+
+
+}
+
+
+
+if(e.key==="ArrowRight"){
+
 
 player.move(1);
 
 
 
-if(e.key==="ArrowUp")
+socket.send(JSON.stringify({
+
+type:"move",
+
+value:1
+
+}));
+
+
+}
+
+
+
+
+
+if(e.key==="ArrowUp"){
+
 
 player.rotate();
 
 
 
-if(e.key==="ArrowDown")
+socket.send(JSON.stringify({
+
+type:"rotate"
+
+}));
+
+
+}
+
+
+
+
+
+
+if(e.key==="ArrowDown"){
+
 
 player.drop();
+
+
+
+socket.send(JSON.stringify({
+
+type:"drop"
+
+}));
+
+
+}
 
 
 
@@ -1070,9 +1424,21 @@ player.drop();
 
 if(e.code==="Space"){
 
+
 e.preventDefault();
 
+
+
 player.hardDrop();
+
+
+
+socket.send(JSON.stringify({
+
+type:"hardDrop"
+
+}));
+
 
 }
 
@@ -1082,13 +1448,77 @@ player.hardDrop();
 
 if(e.key.toLowerCase()==="c"){
 
+
+
 player.hold();
+
+
+
+socket.send(JSON.stringify({
+
+type:"hold"
+
+}));
+
+
 
 }
 
 
 
+
 });
+
+
+
+
+
+
+
+function sendGameOver(){
+
+
+
+socket.send(JSON.stringify({
+
+type:"lose"
+
+}));
+
+
+}
+
+
+
+socket.addEventListener(
+"message",
+e=>{
+
+
+let data=
+JSON.parse(e.data);
+
+
+
+if(data.type==="lose"){
+
+
+gameEnd=true;
+
+
+
+document.getElementById(
+"result"
+)
+.innerText=
+"WIN!";
+
+
+}
+
+
+});
+
 
 
 
@@ -1099,10 +1529,3 @@ player.draw();
 enemy.draw();
 
 player.drawHold();
-
-
-
-</script>
-
-</body>
-</html>
